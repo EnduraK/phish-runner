@@ -1,3 +1,5 @@
+🚀 **[Play Phish Runner Live Here!](https://endurak.github.io/phish-runner/)**
+
 Phish Runner is an interactive, CyBOK-grounded educational web game designed to teach users how to spot phishing vectors. 
 Its core features: 
 Built using HTML, CSS AND Javascript with use of Vite, Typescript and GitHub Actions CI/CD
