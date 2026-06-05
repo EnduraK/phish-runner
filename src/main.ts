@@ -1,0 +1,570 @@
+import './style.css';
+import { SCENARIOS, LEVELS, type Scenario } from './data';
+import { createInitialState, processAnswer, evaluateDiagnosis, type GameState } from './logic';
+
+const CONFETTI_COLORS = ['#FFD93D','#FF6B6B','#4ECDC4','#5DCAA5','#FAC775','#A78BFA','#60A5FA','#F472B6','#34D399'];
+const $ = (id: string) => document.getElementById(id) as HTMLElement;
+
+let state: GameState = createInitialState(LEVELS[0]);
+let currentLevel = LEVELS[0];
+let deck: Scenario[] = [];
+let timer: ReturnType<typeof setTimeout> | null = null;
+let advanceT: ReturnType<typeof setTimeout> | null = null;
+let pendingLevel = 0;
+
+function show(s: string) {
+  ["screen-start", "screen-practice", "screen-game", "screen-over"].forEach(x => {
+    const el = document.getElementById(x);
+    if(el) el.classList.add("hidden");
+  });
+  const target = document.getElementById(s);
+  if(target) target.classList.remove("hidden");
+}
+
+function shuffle(a: Scenario[]) {
+  const r = [...a];
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+
+function setLives() {
+  let h = "";
+  for (let i = 0; i < currentLevel.lives; i++) {
+    h += `<i class="ti ti-heart" style="color:${i < state.lives ? 'var(--danger)' : 'rgba(255,255,255,.2)'}"></i>`;
+  }
+  $("g-lives").innerHTML = h;
+}
+
+function setStreak(prev: number) {
+  const el = $("g-streak");
+  if (state.streak > 1) {
+    $("g-streak-n").textContent = state.streak.toString();
+    el.style.opacity = "1";
+    el.classList.add("active");
+  } else {
+    el.style.opacity = "0";
+    el.classList.remove("active");
+  }
+  if (state.streak === 3 && prev === 2) {
+    const h = document.querySelector(".hud") as HTMLElement;
+    if(h) {
+      h.classList.remove("hud-shake");
+      void h.offsetWidth;
+      h.classList.add("hud-shake");
+    }
+  }
+}
+
+function buildStars() {
+  const c = $("g-stars");
+  if (!c) return;
+  let h = '';
+  for (let i = 0; i < 25; i++) {
+    const x = Math.random() * 100, y = Math.random() * 45, d = Math.random() * 3, s = 1 + Math.random() * 2;
+    h += `<div class="star" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px;animation-delay:${d}s;"></div>`;
+  }
+  c.innerHTML = h;
+}
+
+function buildLevels() {
+  const map: Record<string, string[]> = {
+    safe: ["--safe-bg", "--safe-ink", "--safe-l"],
+    blue: ["--blue-bg", "--blue-ink", "--blue"],
+    amber: ["--amber-bg", "--amber-ink", "--amber"],
+    sus: ["--sus-bg", "--sus-ink", "--sus-l"]
+  };
+  
+  $("level-grid").innerHTML = LEVELS.map((L, i) => {
+    const c = map[L.accent];
+    return `<button class="lvl" data-i="${i}" data-accent="${L.accent}" style="border-color:var(${c[2]});">
+      <div style="flex:none;width:44px;height:44px;border-radius:10px;background:var(${c[0]});display:flex;align-items:center;justify-content:center;"><i class="ti ${L.icon}" style="font-size:24px;color:var(${c[1]});"></i></div>
+      <div><p style="margin:0;font-weight:600;font-size:15px;color:var(${c[1]});">${L.name}</p><p style="margin:1px 0 0;font-size:12px;color:var(--muted);">${L.blurb}</p></div></button>`;
+  }).join("");
+  
+  document.querySelectorAll(".lvl").forEach(b => {
+    b.addEventListener("click", () => enterPractice(parseInt((b as HTMLElement).dataset.i || "0")));
+  });
+}
+
+function enterPractice(i: number) {
+  pendingLevel = i;
+  $("pr-explain").classList.add("hidden");
+  $("pr-go").classList.add("hidden");
+  $("pr-choice").classList.remove("hidden");
+  show("screen-practice");
+}
+
+function practiceAnswer(c: string) {
+  $("pr-choice").classList.add("hidden");
+  $("pr-status").textContent = c === "Suspicious" ? "Spotted it. This is suspicious." : "Not quite - here's why. This is suspicious.";
+  $("pr-explain").classList.remove("hidden");
+  $("pr-go").classList.remove("hidden");
+}
+
+function startGame(li: number) {
+  currentLevel = LEVELS[li];
+  deck = shuffle(SCENARIOS).slice(0, 7);
+  state = createInitialState(currentLevel);
+  
+  $("g-score").textContent = "0";
+  setLives();
+  setStreak(0);
+  
+  $("g-paused").classList.add("hidden");
+  $("g-modal").classList.add("hidden");
+  show("screen-game");
+  buildStars();
+  showLaneReminder(() => spawn());
+}
+
+function showLaneReminder(then: () => void) {
+  const stage = $("stage");
+  const r = document.createElement('div');
+  r.className = 'lane-reminder';
+  r.innerHTML = '<span class="lr-tag lr-safe"><i class="ti ti-arrow-left-circle" aria-hidden="true"></i> SAFE LANE</span><span class="lr-vs">vs</span><span class="lr-tag lr-sus">SUSPICIOUS LANE <i class="ti ti-arrow-right-circle" aria-hidden="true"></i></span>';
+  stage.appendChild(r);
+  setTimeout(() => { r.remove(); if(then) then(); }, 2300);
+}
+
+function highlightMalicious(t: string) {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc(t).replace(/((?:[a-z0-9-]+\.)+[a-z]{2,})(\/[^\s]*)?/gi, m => `<span class="url-mal">${m}</span>`);
+}
+
+function spawn() {
+  const s = deck[state.idx];
+  $("g-icon").className = "ti " + s.icon;
+  $("g-type").textContent = s.type;
+  $("g-text").innerHTML = highlightMalicious(s.message);
+  $("g-num").textContent = (state.idx + 1) + " / " + deck.length;
+  
+  const m = $("g-msg");
+  m.style.animation = "none";
+  void m.offsetWidth;
+  m.style.animation = `approach ${currentLevel.ms}ms linear forwards`;
+  m.style.animationPlayState = "running";
+  
+  const v = $("g-vignette");
+  v.style.animation = "none";
+  void v.offsetWidth;
+  v.style.animation = `urgent ${currentLevel.ms}ms linear forwards`;
+  v.style.animationPlayState = "running";
+  
+  state.answered = false;
+  state.paused = false;
+  state.modalOpen = false;
+  $("g-char").style.transform = "translateX(-50%)";
+  $("g-fb").style.background = "var(--panel2)";
+  $("g-fb").innerHTML = '<p style="margin:0;color:var(--muted);"><i class="ti ti-info-circle" style="font-size:14px;vertical-align:-2px;margin-right:4px;"></i>Read it, then swerve - left for Safe, right for Suspicious.</p>';
+  
+  state.turnStart = Date.now();
+  state.remainingTime = currentLevel.ms;
+  
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (!state.answered && !state.paused) collide("missed");
+  }, currentLevel.ms);
+}
+
+function popup(t: string, c: string, big: boolean = false) {
+  const p = $("g-popup");
+  const tx = $("g-popup-txt");
+  tx.textContent = t;
+  tx.style.color = c || "#fff";
+  tx.classList.toggle("big", !!big);
+  p.style.display = "block";
+  p.classList.remove("pop");
+  void p.offsetWidth;
+  p.classList.add("pop");
+  setTimeout(() => p.style.display = "none", 1100);
+}
+
+function flash(c: string) {
+  const f = $("g-flash");
+  f.style.background = c;
+  setTimeout(() => f.style.background = "rgba(0,0,0,0)", 250);
+}
+
+function fireConfetti() {
+  const container = $("g-confetti");
+  const corners = [
+    {x:0, y:0, dx:1, dy:1}, {x:100, y:0, dx:-1, dy:1},
+    {x:0, y:100, dx:1, dy:-1}, {x:100, y:100, dx:-1, dy:-1}
+  ];
+  corners.forEach(corner => {
+    for (let i = 0; i < 18; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      const shape = Math.random();
+      piece.style.background = color;
+      piece.style.left = corner.x + '%';
+      piece.style.top = corner.y + '%';
+      if (shape < 0.33) { piece.style.borderRadius = '50%'; piece.style.width = '8px'; piece.style.height = '8px'; }
+      else if (shape < 0.66) { piece.style.width = '6px'; piece.style.height = '12px'; }
+      else { piece.style.width = '10px'; piece.style.height = '4px'; }
+      const dist = 180 + Math.random() * 160;
+      const spread = (Math.random() - 0.5) * 120;
+      const tx = corner.dx * dist + spread;
+      const ty = corner.dy * dist + (Math.random() - 0.5) * 80;
+      const tr = (Math.random() * 720 - 360);
+      piece.style.setProperty('--tx', tx + 'px');
+      piece.style.setProperty('--ty', ty + 'px');
+      piece.style.setProperty('--tr', tr + 'deg');
+      piece.style.animationDuration = (1.2 + Math.random() * 0.8) + 's';
+      piece.style.animationDelay = (Math.random() * 0.15) + 's';
+      container.appendChild(piece);
+      setTimeout(() => piece.remove(), 2200);
+    }
+  });
+  const ring = document.createElement('div');
+  ring.className = 'success-ring';
+  $("stage").appendChild(ring);
+  setTimeout(() => ring.remove(), 850);
+}
+
+function showWarning() {
+  const w = $("g-warning");
+  w.classList.remove('show');
+  void w.offsetWidth;
+  w.classList.add('show');
+  setTimeout(() => w.classList.remove('show'), 1200);
+}
+
+function pauseGame() {
+  if ($("screen-game").classList.contains("hidden") || state.answered || state.paused || state.modalOpen) return;
+  state.paused = true;
+  if(timer) clearTimeout(timer);
+  state.remainingTime = state.remainingTime - (Date.now() - state.turnStart);
+  $("g-msg").style.animationPlayState = "paused";
+  $("g-floor").style.animationPlayState = "paused";
+  $("g-vignette").style.animationPlayState = "paused";
+  $("g-paused").classList.remove("hidden");
+}
+
+function resumeGame() {
+  if (!state.paused) return;
+  state.paused = false;
+  $("g-paused").classList.add("hidden");
+  $("g-msg").style.animationPlayState = "running";
+  $("g-floor").style.animationPlayState = "running";
+  $("g-vignette").style.animationPlayState = "running";
+  state.turnStart = Date.now();
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (!state.answered && !state.paused) collide("missed");
+  }, Math.max(200, state.remainingTime));
+}
+
+function togglePause() {
+  state.paused ? resumeGame() : pauseGame();
+}
+
+function answer(choice: 'Safe' | 'Suspicious') {
+  if (state.answered || state.paused || state.modalOpen) return;
+  if (timer) clearTimeout(timer);
+  
+  const scenario = deck[state.idx];
+  const consumed = Math.max(0, Date.now() - state.turnStart);
+  const ms = Math.min(currentLevel.ms, currentLevel.ms - state.remainingTime + consumed);
+  
+  const prevStreak = state.streak;
+  const result = processAnswer(state, choice, scenario, currentLevel.mult, ms);
+  state = result.newState;
+
+  $("g-char").style.transform = choice === "Safe" ? "translateX(-180%)" : "translateX(80%)";
+  $("g-msg").style.animationPlayState = "paused";
+  $("g-vignette").style.animationPlayState = "paused";
+
+  if (result.isCorrect) {
+    $("g-score").textContent = state.score.toString();
+    setStreak(prevStreak);
+    flash("rgba(29,158,117,.25)");
+    fireConfetti();
+    const big = state.streak >= 3;
+    popup((state.streak > 1 ? "STREAK x" + state.streak + "  " : "") + "+" + result.pointsAwarded, "var(--safe-l)", big);
+    feedback(true, scenario);
+    if (advanceT) clearTimeout(advanceT);
+    advanceT = setTimeout(next, 1900);
+  } else {
+    setStreak(0);
+    collide("wrong", scenario);
+  }
+}
+
+function collide(reason: string, sc?: Scenario) {
+  const scenario = sc || deck[state.idx];
+  
+  if(reason === "missed") {
+      const consumed = Math.max(0, Date.now() - state.turnStart);
+      const ms = Math.min(currentLevel.ms, currentLevel.ms - state.remainingTime + consumed);
+      state = processAnswer(state, 'Timeout', scenario, currentLevel.mult, ms).newState;
+  }
+
+  setLives();
+  setStreak(0);
+  flash("rgba(226,75,74,.3)");
+  $("stage").classList.add("shake");
+  setTimeout(() => $("stage").classList.remove("shake"), 500);
+  showWarning();
+  
+  popup(reason === "missed" ? "TOO LATE" : "WRONG LANE", "#FFD93D");
+  feedback(false, scenario);
+  
+  state.modalOpen = true;
+  showAnatomy(scenario, reason);
+}
+
+function chipMarkup(s: Scenario) {
+  const cls = s.answer === "Suspicious" ? "chip-sus" : "chip-safe";
+  return (s.flags || []).map(f => `<span class="chip ${cls}"><i class="ti ${s.answer === "Suspicious" ? "ti-alert-triangle" : "ti-circle-check"}" aria-hidden="true"></i>${f}</span>`).join("");
+}
+
+function ruleMarkup(s: Scenario) {
+  return `<i class="ti ti-bulb" aria-hidden="true"></i><div><strong>Remember</strong>${s.rule}</div>`;
+}
+
+function showAnatomy(s: Scenario, reason: string) {
+  let title, sub;
+  if (reason === "missed") { title = "Time's up"; sub = "You didn't choose in time - here's what to look for."; }
+  else if (s.answer === "Suspicious") { title = "Missed - that was suspicious"; sub = "The red flags below were the giveaway."; }
+  else { title = "False alarm - that one was safe"; sub = "The markers below are why it was actually safe."; }
+  
+  $("m-title").textContent = title;
+  $("m-subtitle").textContent = sub;
+  $("m-chips").innerHTML = chipMarkup(s);
+  $("m-rule").innerHTML = ruleMarkup(s);
+  $("m-target").innerHTML = `<code>${s.breakdown.targetCue}</code>`;
+  $("m-vector").textContent = s.breakdown.attackVector;
+  $("m-counter").textContent = s.breakdown.countermeasure;
+  $("m-cybok").textContent = s.cybok;
+  
+  $("m-deep").classList.add("hidden");
+  $("m-show-deep").classList.remove("hidden");
+  $("g-modal").classList.remove("hidden");
+}
+
+function dismissModal() {
+  if (!state.modalOpen) return;
+  state.modalOpen = false;
+  $("g-modal").classList.add("hidden");
+  if (state.lives <= 0) { gameOver(); } else { next(); }
+}
+
+function feedback(ok: boolean, s: Scenario) {
+  const fb = $("g-fb");
+  const bg = ok ? "var(--safe-bg)" : "var(--sus-bg)";
+  const ac = ok ? "var(--safe-ink)" : "var(--sus-ink)";
+  const status = ok ? (s.answer === "Suspicious" ? "Spotted the red flags" : "Correct - this one was safe") : (s.answer === "Suspicious" ? "Got hit - red flags missed" : "That one was actually safe");
+  const icon = ok ? "ti-circle-check" : "ti-bulb";
+  
+  fb.style.background = bg;
+  fb.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><i class="ti ${icon}" style="font-size:14px;color:${ac};"></i><span style="font-size:13px;font-weight:600;color:${ac};">${status}</span></div><div class="chips" style="margin:0;">${chipMarkup(s)}</div>`;
+}
+
+function next() {
+  state.idx++;
+  if (state.idx >= deck.length) { gameOver(); } else { spawn(); }
+}
+
+function gameOver() {
+  if (timer) clearTimeout(timer);
+  if (advanceT) clearTimeout(advanceT);
+  
+  const total = deck.length;
+  const caught = state.lives <= 0;
+  
+  $("o-title").textContent = caught ? "Caught by phishers" : "You survived the run";
+  $("o-icon").innerHTML = caught ? '<i class="ti ti-shield-x"></i>' : '<i class="ti ti-shield-check"></i>';
+  $("o-icon").style.color = caught ? "var(--danger)" : "var(--safe)";
+  $("o-level-played").textContent = currentLevel.name + " level  -  " + currentLevel.mult + "x points";
+  
+  const sc = $("o-score");
+  sc.textContent = state.score.toLocaleString();
+  sc.classList.remove("countup");
+  void sc.offsetWidth;
+  sc.classList.add("countup");
+  
+  $("o-correct").textContent = state.correct + "/" + total;
+  $("o-acc").textContent = Math.round((state.correct / total) * 100) + "%";
+  $("o-streak").textContent = state.bestStreak.toString();
+  
+  let lv;
+  if (state.correct >= 7) lv = "Phishing-aware pro";
+  else if (state.correct >= 5) lv = "Sharp eye - stay alert";
+  else if (state.correct >= 3) lv = "Getting there - keep practising";
+  else lv = "High risk - review the takeaways";
+  $("o-awareness").textContent = lv;
+
+  const answered = state.telemetry.filter(t => t.userSelection !== "Timeout");
+  const hes = answered.length ? Math.round(answered.reduce((s, t) => s + t.responseTimeMilliseconds, 0) / answered.length / currentLevel.ms * 100) : 0;
+  $("o-hes").textContent = hes + "%";
+  
+  const wrongs = state.telemetry.filter(t => !t.isCorrect);
+  let vuln = "None - clean run";
+  if (wrongs.length) {
+    const c: Record<string, number> = {};
+    for (const t of wrongs) c[t.cyBOKKnowledgeArea] = (c[t.cyBOKKnowledgeArea] || 0) + 1;
+    const sorted = Object.entries(c).sort((a, b) => b[1] - a[1]);
+    vuln = sorted.length ? sorted[0][0] : "None - clean run";
+  }
+  $("o-vuln").textContent = vuln;
+  
+  const diag = evaluateDiagnosis(state.telemetry, SCENARIOS);
+  $("o-coach-title").textContent = diag.title;
+  $("o-coach-body").textContent = diag.body;
+  
+  const per: Record<string, {c: number, t: number}> = {};
+  for (const t of state.telemetry) {
+    if (!per[t.cyBOKKnowledgeArea]) per[t.cyBOKKnowledgeArea] = { c: 0, t: 0 };
+    per[t.cyBOKKnowledgeArea].t++;
+    if (t.isCorrect) per[t.cyBOKKnowledgeArea].c++;
+  }
+  
+  const rows = Object.entries(per).sort((a, b) => (a[1].c / Math.max(1, a[1].t)) - (b[1].c / Math.max(1, b[1].t))).map(([ka, v]) => {
+    const acc = Math.round((v.c / Math.max(1, v.t)) * 100);
+    const tone = acc >= 80 ? "ok" : acc >= 50 ? "warn" : "bad";
+    return `<tr class="ka-${tone}"><td>${ka}</td><td class="num">${v.c}/${v.t}</td><td class="num">${acc}%</td></tr>`;
+  }).join("");
+  $("o-ka-body").innerHTML = rows || '<tr><td colspan="3" class="num">No data</td></tr>';
+
+  buildMistakeReview();
+  switchTab('mistakes');
+  show("screen-over");
+  if (!caught && state.correct >= 5) { setTimeout(() => fireEndConfetti(), 200); }
+}
+
+function buildMistakeReview() {
+  const container = $("panel-mistakes");
+  $("o-mistake-count").textContent = state.mistakes.length.toString();
+  if (state.mistakes.length === 0) {
+    container.innerHTML = `<div class="no-mistakes">
+      <div class="no-mistakes-icon"><i class="ti ti-trophy"></i></div>
+      <p style="margin:0;font-size:16px;font-weight:600;">Flawless run!</p>
+      <p style="margin:4px 0 0;font-size:13px;">You spotted every phish. Your instincts are sharp.</p>
+      </div>`;
+    return;
+  }
+  let html = '<p style="text-align:left;font-size:13px;color:var(--muted);margin:0 0 10px;">Here\'s what tripped you up - and why it was a phish.</p>';
+  state.mistakes.forEach((m, i) => {
+    const s = m.scenario;
+    const chosenLabel = m.chosen === '(no answer)' ? 'Ran out of time' : ('You chose: ' + m.chosen);
+    html += `<div class="mistake-card" style="animation-delay:${i * 80}ms;">
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;">
+        <i class="ti ${s.icon}" style="font-size:20px;color:var(--sus);flex:none;margin-top:2px;"></i>
+        <div style="flex:1;min-width:0;">
+          <p style="margin:0;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">${s.type}</p>
+          <p class="mistake-msg">"${s.message}"</p>
+        </div>
+      </div>
+      <div class="mistake-row">
+        <span class="mistake-tag tag-you-wrong"><i class="ti ti-x" style="font-size:12px;"></i>${chosenLabel}</span>
+        <span class="mistake-tag tag-correct"><i class="ti ti-check" style="font-size:12px;"></i>Correct: ${s.answer}</span>
+      </div>
+      <div class="chips" style="margin:8px 0 4px;">${chipMarkup(s)}</div>
+      <div class="mistake-explain"><strong>Why:</strong> ${s.feedback}</div>
+      <div class="rule-callout" style="margin-top:8px;">${ruleMarkup(s)}</div>
+      <span class="cybok-pill" style="margin-top:8px;">${s.cybok}</span>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function fireEndConfetti() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+  document.body.appendChild(overlay);
+  
+  const corners = [
+    {x:0, y:0, dx:1, dy:1}, {x:100, y:0, dx:-1, dy:1},
+    {x:0, y:100, dx:1, dy:-1}, {x:100, y:100, dx:-1, dy:-1}
+  ];
+  
+  corners.forEach(corner => {
+    for(let i=0; i<25; i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      piece.style.left = corner.x + '%';
+      piece.style.top = corner.y + '%';
+      
+      const shape = Math.random();
+      if(shape < 0.33) { piece.style.borderRadius = '50%'; piece.style.width = '9px'; piece.style.height = '9px'; }
+      else if(shape < 0.66) { piece.style.width = '7px'; piece.style.height = '14px'; }
+      else { piece.style.width = '12px'; piece.style.height = '5px'; }
+      
+      const dist = 280 + Math.random() * 260;
+      const spread = (Math.random() - 0.5) * 180;
+      const tx = corner.dx * dist + spread;
+      const ty = corner.dy * dist + (Math.random() - 0.5) * 120;
+      const tr = (Math.random() * 900 - 450);
+      
+      piece.style.setProperty('--tx', tx + 'px');
+      piece.style.setProperty('--ty', ty + 'px');
+      piece.style.setProperty('--tr', tr + 'deg');
+      piece.style.animationDuration = (1.6 + Math.random() * 1.2) + 's';
+      piece.style.animationDelay = (Math.random() * 0.4) + 's';
+      
+      overlay.appendChild(piece);
+    }
+  });
+  
+  setTimeout(() => overlay.remove(), 3500);
+}
+
+function switchTab(name: string) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $(`tab-${name}`)?.classList.add('active');
+  if (name === 'mistakes') {
+    $("panel-mistakes").classList.remove('hidden');
+    $("panel-takeaways").classList.add('hidden');
+  } else {
+    $("panel-mistakes").classList.add('hidden');
+    $("panel-takeaways").classList.remove('hidden');
+  }
+}
+
+// Event Listeners
+buildLevels();
+show("screen-start"); // Initialize the first screen properly
+
+$("pr-safe")?.addEventListener("click", () => practiceAnswer("Safe"));
+$("pr-sus")?.addEventListener("click", () => practiceAnswer("Suspicious"));
+$("pr-start")?.addEventListener("click", () => startGame(pendingLevel));
+$("o-replay")?.addEventListener("click", () => startGame(LEVELS.indexOf(currentLevel)));
+$("o-menu")?.addEventListener("click", () => show("screen-start"));
+$("g-safe")?.addEventListener("click", () => answer("Safe"));
+$("g-sus")?.addEventListener("click", () => answer("Suspicious"));
+$("g-pause")?.addEventListener("click", togglePause);
+$("g-resume")?.addEventListener("click", resumeGame);
+$("g-quit")?.addEventListener("click", () => {
+  if (timer) clearTimeout(timer);
+  if (advanceT) clearTimeout(advanceT);
+  state.paused = false;
+  state.modalOpen = false;
+  $("g-paused").classList.add("hidden");
+  $("g-modal").classList.add("hidden");
+  show("screen-start");
+});
+$("m-dismiss")?.addEventListener("click", dismissModal);
+$("m-show-deep")?.addEventListener("click", () => {
+  $("m-deep").classList.remove("hidden");
+  $("m-show-deep").classList.add("hidden");
+});
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab((t as HTMLElement).dataset.tab || ''));
+});
+document.addEventListener("keydown", (e: KeyboardEvent) => {
+  if ($("screen-game").classList.contains("hidden")) return;
+  if (e.key === " " || e.code === "Space") {
+    e.preventDefault();
+    if (state.modalOpen) dismissModal(); else togglePause();
+    return;
+  }
+  if (state.paused || state.modalOpen) return;
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") answer("Safe");
+  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") answer("Suspicious");
+});
