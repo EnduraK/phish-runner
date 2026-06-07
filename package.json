@@ -1,8 +1,33 @@
 {
   "name": "phish-runner",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Phish Runner: Safe or Suspicious? — a CyBOK-grounded browser game that trains players to spot phishing in real-world messages. Built for 503IT Communication and Collaboration (Group C, CU London).",
   "type": "module",
+  "private": true,
+  "homepage": "https://endurak.github.io/phish-runner/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EnduraK/phish-runner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/EnduraK/phish-runner/issues"
+  },
+  "author": "Khalik Oketokun (16085781)",
+  "license": "MIT",
+  "keywords": [
+    "cybersecurity",
+    "phishing",
+    "cybok",
+    "awareness-game",
+    "education",
+    "typescript",
+    "vite",
+    "vitest",
+    "browser-game",
+    "social-engineering",
+    "503IT",
+    "CU-London"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
