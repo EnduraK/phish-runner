@@ -79,9 +79,11 @@ function buildLevels() {
   
   $("level-grid").innerHTML = LEVELS.map((L, i) => {
     const c = map[L.accent];
+    const best = loadBest(L.name);
+    const bestBadge = best > 0 ? `<span class="lvl-best" style="display:block;font-size:11px;color:${"#" + c[1].slice(2)};margin-top:2px;font-weight:600;letter-spacing:.04em;">★ BEST ${best.toLocaleString()}</span>` : "";
     return `<button class="lvl" data-i="${i}" data-accent="${L.accent}" style="border-color:var(${c[2]});">
       <div style="flex:none;width:44px;height:44px;border-radius:10px;background:var(${c[0]});display:flex;align-items:center;justify-content:center;"><i class="ti ${L.icon}" style="font-size:24px;color:var(${c[1]});"></i></div>
-      <div><p style="margin:0;font-weight:600;font-size:15px;color:var(${c[1]});">${L.name}</p><p style="margin:1px 0 0;font-size:12px;color:var(--muted);">${L.blurb}</p></div></button>`;
+      <div><p style="margin:0;font-weight:600;font-size:15px;color:var(${c[1]});">${L.name}</p><p style="margin:1px 0 0;font-size:12px;color:var(--muted);">${L.blurb}</p>${bestBadge}</div></button>`;
   }).join("");
   
   document.querySelectorAll(".lvl").forEach(b => {
@@ -287,10 +289,16 @@ function answer(choice: 'Safe' | 'Suspicious') {
     const big = state.streak >= 3;
     popup((state.streak > 1 ? "STREAK x" + state.streak + "  " : "") + "+" + result.pointsAwarded, "var(--safe-l)", big);
     feedback(true, scenario);
+    // v2.0: sound + haptic
+    sfx(big ? "streak" : "correct");
+    haptic([8]);
     if (advanceT) clearTimeout(advanceT);
     advanceT = setTimeout(next, 1900);
   } else {
     setStreak(0);
+    // v2.0: sound + haptic on wrong answer
+    sfx("wrong");
+    haptic([30, 40, 30]);
     collide("wrong", scenario);
   }
 }
@@ -434,6 +442,13 @@ function gameOver() {
   buildMistakeReview();
   switchTab('mistakes');
   show("screen-over");
+  // v2.0: save high score per level + end-of-game sound
+  const isNewBest = saveBest(currentLevel.name, state.score);
+  if (isNewBest && state.score > 0) {
+    setTimeout(() => popupNewBest(state.score), 400);
+  }
+  sfx(caught ? "gameover" : "victory");
+  haptic(caught ? [60, 80, 60] : [10, 30, 10, 30, 80]);
   if (!caught && state.correct >= 5) { setTimeout(() => fireEndConfetti(), 200); }
 }
 
@@ -568,3 +583,120 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") answer("Safe");
   if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") answer("Suspicious");
 });
+
+// =====================================================================
+// v2.0 — Mobile-first, juicier, installable
+// =====================================================================
+
+// ---- Sound system: synthesised via Web Audio API (no asset files) ----
+let audioCtx: AudioContext | null = null;
+let soundOn = localStorage.getItem("pr_sound") !== "off";
+function getCtx(): AudioContext | null {
+  if (!soundOn) return null;
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)(); }
+    catch (e) { return null; }
+  }
+  return audioCtx;
+}
+function tone(freq: number, duration: number, type: OscillatorType = "sine", gain = 0.18, delay = 0) {
+  const ctx = getCtx(); if (!ctx) return;
+  const t0 = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + duration + 0.02);
+}
+function sfx(name: "correct" | "wrong" | "streak" | "victory" | "gameover" | "tick" | "pop") {
+  if (!soundOn) return;
+  switch (name) {
+    case "correct":  tone(660, 0.10, "sine", 0.16); tone(990, 0.14, "sine", 0.14, 0.06); break;
+    case "wrong":    tone(220, 0.18, "sawtooth", 0.18); tone(160, 0.20, "sawtooth", 0.14, 0.05); break;
+    case "streak":   tone(660, 0.08, "triangle", 0.16); tone(880, 0.08, "triangle", 0.16, 0.07);
+                     tone(1175, 0.12, "triangle", 0.18, 0.14); break;
+    case "victory":  [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, "sine", 0.18, i * 0.12)); break;
+    case "gameover": tone(330, 0.30, "sawtooth", 0.18); tone(220, 0.40, "sawtooth", 0.18, 0.20); break;
+    case "tick":     tone(880, 0.04, "square", 0.08); break;
+    case "pop":      tone(523, 0.06, "triangle", 0.12); break;
+  }
+}
+
+// ---- Haptic feedback (mobile only) ----
+function haptic(pattern: number[]) {
+  if ("vibrate" in navigator) {
+    try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+  }
+}
+
+// ---- localStorage best score per level ----
+function loadBest(levelName: string): number {
+  try {
+    const raw = localStorage.getItem("pr_best_" + levelName);
+    return raw ? parseInt(raw, 10) || 0 : 0;
+  } catch (e) { return 0; }
+}
+function saveBest(levelName: string, score: number): boolean {
+  try {
+    const current = loadBest(levelName);
+    if (score > current) {
+      localStorage.setItem("pr_best_" + levelName, String(score));
+      return true;
+    }
+    return false;
+  } catch (e) { return false; }
+}
+function popupNewBest(score: number) {
+  const el = document.createElement('div');
+  el.style.cssText = "position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#FAC775,#D85A30);color:#0E1330;padding:18px 30px;border-radius:14px;font-size:22px;font-weight:700;z-index:9999;box-shadow:0 12px 36px rgba(0,0,0,.4);text-align:center;pointer-events:none;animation:fadeIn .3s ease-out, fadeOut .4s ease-in 2.4s forwards;";
+  el.innerHTML = `★ NEW BEST<br><span style="font-size:32px;display:block;margin-top:4px;">${score.toLocaleString()}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ---- Sound toggle button in HUD ----
+const muteBtn = $("g-mute");
+function updateMuteIcon() {
+  if (!muteBtn) return;
+  const icon = muteBtn.querySelector("i");
+  if (icon) icon.className = "ti " + (soundOn ? "ti-volume" : "ti-volume-off");
+}
+updateMuteIcon();
+muteBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  soundOn = !soundOn;
+  localStorage.setItem("pr_sound", soundOn ? "on" : "off");
+  updateMuteIcon();
+  if (soundOn) sfx("pop");
+  haptic([10]);
+});
+
+// ---- Mobile swipe gestures on the stage ----
+const stage = $("stage");
+if (stage) {
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  stage.addEventListener("touchstart", (e: TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: true });
+  stage.addEventListener("touchend", (e: TouchEvent) => {
+    if ($("screen-game").classList.contains("hidden")) return;
+    if (state.paused || state.modalOpen || state.answered) return;
+    if (e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+    if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.4 && dt < 600) {
+      answer(dx < 0 ? "Safe" : "Suspicious");
+    }
+  }, { passive: true });
+}
+
+// Initialise audio context on first user gesture (browser autoplay policy)
+const unlockAudio = () => { getCtx(); document.removeEventListener("pointerdown", unlockAudio); };
+document.addEventListener("pointerdown", unlockAudio, { once: true });
