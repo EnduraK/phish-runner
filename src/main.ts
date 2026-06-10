@@ -351,6 +351,8 @@ function showAnatomy(s: Scenario, reason: string) {
   $("m-cybok").textContent = s.cybok;
   
   $("m-deep").classList.add("hidden");
+  $("m-chips").classList.remove("show");
+  $("m-flag-label").classList.remove("show");
   $("m-show-deep").classList.remove("hidden");
   $("g-modal").classList.remove("hidden");
 }
@@ -378,17 +380,63 @@ function next() {
   if (state.idx >= deck.length) { gameOver(); } else { spawn(); }
 }
 
+// v2.3: rank tiers + coach lines
+const RANK_TIERS: { name: string; min: number; mod: string; coachH: string; coachB: string }[] = [
+  { name: "PHISH BAIT", min: 0, mod: "rank-caught", coachH: "You got hooked.", coachB: "Read the domain before you swerve - that's where the lie lives." },
+  { name: "ROOKIE SPOTTER", min: 350, mod: "", coachH: "Sharper than most.", coachB: "Build a streak - three correct in a row doubles your points." },
+  { name: "PHISH HUNTER", min: 1000, mod: "", coachH: "Reflexes are dialled in.", coachB: "Try the next level up - speed is what catches everyone else." },
+  { name: "CYBER SENTINEL", min: 2200, mod: "", coachH: "You are the firewall.", coachB: "Daily Challenge is unlocked - beat it before tomorrow." },
+  { name: "CYBER LEGEND", min: 4500, mod: "rank-legend", coachH: "Legendary read on every message.", coachB: "Share your score and challenge a friend to top it." }
+];
+function getRank(score: number) {
+  let cur = RANK_TIERS[0]; let nxt: typeof RANK_TIERS[number] | null = RANK_TIERS[1];
+  for (let i = 0; i < RANK_TIERS.length; i++) {
+    if (score >= RANK_TIERS[i].min) { cur = RANK_TIERS[i]; nxt = RANK_TIERS[i+1] || null; }
+  }
+  return { cur, nxt };
+}
+
 function gameOver() {
   if (timer) clearTimeout(timer);
   if (advanceT) clearTimeout(advanceT);
-  
+
   const total = deck.length;
   const caught = state.lives <= 0;
-  
-  $("o-title").textContent = caught ? "Caught by phishers" : "You survived the run";
-  $("o-icon").innerHTML = caught ? '<i class="ti ti-shield-x"></i>' : '<i class="ti ti-shield-check"></i>';
-  $("o-icon").style.color = caught ? "var(--danger)" : "var(--safe)";
-  $("o-level-played").textContent = currentLevel.name + " level  -  " + currentLevel.mult + "x points";
+
+  // v2.3 rank reveal
+  const { cur: rank, nxt: nextRank } = getRank(state.score);
+  const rIcon = $("rank-icon");
+  if (rIcon) {
+    rIcon.className = "rank-icon " + (caught ? "rank-caught" : (rank.mod || ""));
+    rIcon.innerHTML = caught
+      ? '<svg class="fail-svg" viewBox="0 0 80 80" aria-hidden="true"><path class="fail-chain" d="M 40 4 L 40 38"/><path class="fail-hook" d="M 40 38 Q 40 54 32 54 Q 22 54 24 44 L 20 48 M 24 44 L 28 48"/><g class="fail-runner"><circle cx="54" cy="56" r="5" fill="#fff"/><path d="M 54 61 L 54 70 M 48 66 L 60 64 M 50 70 L 46 78 M 58 70 L 62 78" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/></g></svg>'
+      : '<svg class="survive-svg" viewBox="0 0 80 80" aria-hidden="true"><path class="survive-shield" d="M 40 10 L 18 18 L 18 38 Q 18 58 40 70 Q 62 58 62 38 L 62 18 Z"/><path class="survive-check" d="M 28 40 L 37 49 L 54 32"/></svg>';
+  }
+  const rName = $("rank-name"); if (rName) rName.textContent = caught ? "PHISH BAIT" : rank.name;
+  const rTag = $("rank-tag"); if (rTag) rTag.textContent = (caught ? "Caught - " : "") + state.correct + " of " + total + " caught \u00b7 best streak " + state.bestStreak;
+  if (nextRank) {
+    const span = nextRank.min - rank.min;
+    const done = state.score - rank.min;
+    const pct = Math.max(0, Math.min(100, Math.round((done / span) * 100)));
+    const fill = $("rank-bar-fill"); if (fill) (fill as HTMLElement).style.width = pct + "%";
+    const now = $("rank-bar-now"); if (now) now.textContent = caught ? "PHISH BAIT" : rank.name;
+    const nxtEl = $("rank-bar-next"); if (nxtEl) nxtEl.textContent = "NEXT: " + nextRank.name;
+    const gap = $("rank-bar-gap"); if (gap) gap.textContent = Math.max(0, nextRank.min - state.score).toLocaleString() + " points to next rank";
+  } else {
+    const fill = $("rank-bar-fill"); if (fill) (fill as HTMLElement).style.width = "100%";
+    const nxtEl = $("rank-bar-next"); if (nxtEl) nxtEl.textContent = "MAX RANK";
+    const gap = $("rank-bar-gap"); if (gap) gap.textContent = "Top tier reached - defend it.";
+  }
+  const tl = $("timeline-dots");
+  if (tl) {
+    tl.innerHTML = state.telemetry.map((t, i) => {
+      const cls = t.userSelection === "Timeout" ? "tl-timeout" : (t.isCorrect ? "tl-correct" : "tl-wrong");
+      const sym = t.userSelection === "Timeout" ? "T" : (t.isCorrect ? "\u2713" : "\u2717");
+      return '<span class="tl-dot ' + cls + '" style="animation-delay:' + (i*60) + 'ms">' + sym + '</span>';
+    }).join("");
+  }
+
+  $("o-level-played").textContent = currentLevel.name + " \u00b7 " + currentLevel.mult + "\u00d7 points";
   
   const sc = $("o-score");
   sc.textContent = state.score.toLocaleString();
@@ -400,12 +448,7 @@ function gameOver() {
   $("o-acc").textContent = Math.round((state.correct / total) * 100) + "%";
   $("o-streak").textContent = state.bestStreak.toString();
   
-  let lv;
-  if (state.correct >= 7) lv = "Phishing-aware pro";
-  else if (state.correct >= 5) lv = "Sharp eye - stay alert";
-  else if (state.correct >= 3) lv = "Getting there - keep practising";
-  else lv = "High risk - review the takeaways";
-  $("o-awareness").textContent = lv;
+  // v2.3: o-awareness replaced by rank reveal above
 
   const answered = state.telemetry.filter(t => t.userSelection !== "Timeout");
   const hes = answered.length ? Math.round(answered.reduce((s, t) => s + t.responseTimeMilliseconds, 0) / answered.length / currentLevel.ms * 100) : 0;
@@ -422,8 +465,10 @@ function gameOver() {
   $("o-vuln").textContent = vuln;
   
   const diag = evaluateDiagnosis(state.telemetry, SCENARIOS);
-  $("o-coach-title").textContent = diag.title;
-  $("o-coach-body").textContent = diag.body;
+  const wrongCount = state.telemetry.filter(t => !t.isCorrect).length;
+  const useRankCoach = wrongCount === 0 || diag.title.toLowerCase().includes("clean");
+  $("o-coach-title").textContent = useRankCoach ? rank.coachH : diag.title;
+  $("o-coach-body").textContent  = useRankCoach ? rank.coachB : diag.body;
   
   const per: Record<string, {c: number, t: number}> = {};
   for (const t of state.telemetry) {
@@ -572,6 +617,8 @@ $("g-quit")?.addEventListener("click", () => {
 });
 $("m-dismiss")?.addEventListener("click", dismissModal);
 $("m-show-deep")?.addEventListener("click", () => {
+  $("m-chips").classList.add("show");
+  $("m-flag-label").classList.add("show");
   $("m-deep").classList.remove("hidden");
   $("m-show-deep").classList.add("hidden");
 });

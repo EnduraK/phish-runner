@@ -24,7 +24,21 @@
     <div id="screen-start">
       <div class="card start-card">
         <div class="start-hero" style="text-align:center;">
-          <div class="hero-icon"><i class="ti ti-fish-hook" aria-hidden="true"></i></div>
+          <div class="hero-icon" aria-label="Phish Runner logo">
+            <span class="hero-ring hero-ring-1" aria-hidden="true"></span>
+            <span class="hero-ring hero-ring-2" aria-hidden="true"></span>
+            <span class="hero-ring hero-ring-3" aria-hidden="true"></span>
+            <svg class="hero-hook" viewBox="0 0 64 64" aria-hidden="true">
+              <path class="hook-line" d="M 32 6 L 32 30" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+              <path class="hook-curve" d="M 32 30 Q 32 50 22 50 Q 12 50 14 38" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="hook-barb" d="M 14 38 L 9 42 M 14 38 L 18 43" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <circle class="hook-bait" cx="14" cy="38" r="3.2" fill="#FAC775" stroke="#FFB347" stroke-width="1.4"/>
+            </svg>
+            <span class="hero-fish" aria-hidden="true">
+              <svg viewBox="0 0 32 16"><path d="M 2 8 L 9 4 L 16 8 L 9 12 Z M 22 8 Q 28 4 30 2 Q 28 8 30 14 Q 28 12 22 8 Z" fill="currentColor"/></svg>
+            </span>
+            <span class="hero-badge" aria-hidden="true">?</span>
+          </div>
           <h1 class="hero-title">Phish Runner: Safe or Suspicious?</h1>
           <p class="sub">Spot the red flags. Choose before it catches you.</p>
           <span class="pill" style="background:var(--purple-bg);color:var(--purple-ink);margin-top:14px;">503IT - Group C - CyBOK-grounded</span>
@@ -159,10 +173,9 @@
           <div class="modal">
             <div class="modal-icon"><i class="ti ti-shield-x"></i></div>
             <h3 id="m-title">Got hit</h3>
-            <p id="m-subtitle" style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Here's what tripped you up.</p>
-            <p style="font-size:11px;color:var(--muted);margin:0 0 6px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;">Red flags</p>
-            <div id="m-chips" class="chips" style="margin:0 0 12px;"></div>
             <div id="m-rule" class="rule-callout"></div>
+            <p id="m-flag-label" style="font-size:11px;color:var(--muted);margin:10px 0 6px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;">Red flags</p>
+            <div id="m-chips" class="chips" style="margin:0 0 6px;"></div>
             <div id="m-deep" class="hidden">
               <table class="anatomy" style="margin-top:14px;">
                 <thead><tr><th>Target cue</th><th>Attack vector</th><th>Countermeasure</th></tr></thead>
@@ -171,8 +184,8 @@
               <p class="modal-cybok">CyBOK reference: <span id="m-cybok"></span></p>
             </div>
             <div class="modal-actions">
-              <button id="m-show-deep" class="btn btn-ghost"><i class="ti ti-chevron-down" style="font-size:14px;vertical-align:-2px;margin-right:4px;"></i>Show full breakdown</button>
-              <button id="m-dismiss" class="btn btn-primary"><i class="ti ti-player-play" style="font-size:16px;vertical-align:-3px;margin-right:6px;"></i>Resume run</button>
+              <button id="m-show-deep" class="btn btn-ghost"><i class="ti ti-info-circle" style="font-size:14px;vertical-align:-2px;margin-right:4px;"></i>Show why</button>
+              <button id="m-dismiss" class="btn btn-primary"><i class="ti ti-player-play" style="font-size:16px;vertical-align:-3px;margin-right:6px;"></i>Resume</button>
             </div>
           </div>
         </div>
@@ -187,72 +200,116 @@
 
     <!-- GAME OVER SCREEN -->
     <div id="screen-over" class="hidden">
-      <div class="card" style="text-align:center;">
-        <div id="o-icon" style="font-size:54px;margin-bottom:2px;color:var(--safe);"><i class="ti ti-shield-check" aria-hidden="true"></i></div>
-        <h1 id="o-title">Run complete</h1>
-        <p class="sub" id="o-level-played">Beginner level</p>
+      <div class="card end-card" style="text-align:center;">
 
+        <!-- RANK REVEAL -->
+        <div class="rank-reveal" id="rank-reveal">
+          <div class="rank-icon-wrap"><div class="rank-icon" id="rank-icon"><i class="ti ti-shield-check"></i></div></div>
+          <p class="rank-pre">YOU RANKED</p>
+          <h1 class="rank-name" id="rank-name">PHISH SPOTTER</h1>
+          <p class="rank-tag" id="rank-tag">4 of 7 caught \u00b7 best streak 3</p>
+        </div>
+
+        <!-- BIG SCORE -->
         <div class="final-score-card">
-          <p style="font-size:13px;color:rgba(255,255,255,.7);margin:0 0 2px;letter-spacing:.08em;">FINAL SCORE</p>
-          <p id="o-score" class="countup" style="font-size:64px;font-weight:700;color:#fff;margin:0;line-height:1;">0</p>
-          <p id="o-awareness" style="font-size:15px;font-weight:500;color:var(--safe-l);margin:8px 0 0;">-</p>
+          <p class="score-l">SCORE</p>
+          <p id="o-score" class="countup score-v">0</p>
+          <p class="score-sub" id="o-level-played">Regular \u00b7 2\u00d7 points</p>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
-          <div style="background:var(--panel2);border-radius:var(--radius-sm);padding:12px;"><p style="font-size:12px;color:var(--muted);margin:0;">Correct</p><p id="o-correct" style="font-size:22px;font-weight:600;margin:2px 0 0;">0/7</p></div>
-          <div style="background:var(--panel2);border-radius:var(--radius-sm);padding:12px;"><p style="font-size:12px;color:var(--muted);margin:0;">Accuracy</p><p id="o-acc" style="font-size:22px;font-weight:600;margin:2px 0 0;">0%</p></div>
-          <div style="background:var(--panel2);border-radius:var(--radius-sm);padding:12px;"><p style="font-size:12px;color:var(--muted);margin:0;">Best streak</p><p id="o-streak" style="font-size:22px;font-weight:600;margin:2px 0 0;">0</p></div>
-        </div>
-
-        <div class="diag-coach">
-          <p class="coach-l">Personal diagnosis</p>
-          <p id="o-coach-title" class="coach-h">-</p>
-          <p id="o-coach-body" class="coach-b">-</p>
-        </div>
-
-        <div class="diagnostic">
-          <p class="diag-head">Diagnostic profile</p>
-          <div class="diag-row">
-            <div class="diag-cell"><p class="diag-l">Hesitation coefficient</p><p id="o-hes" class="diag-v">0%</p><p class="diag-help">Avg % of decision window used per answered turn.</p></div>
-            <div class="diag-cell"><p class="diag-l">Primary vulnerability vector</p><p id="o-vuln" class="diag-v">-</p><p class="diag-help">CyBOK Knowledge Area you got wrong most.</p></div>
+        <!-- RANK PROGRESS BAR -->
+        <div class="rank-bar" id="rank-bar">
+          <div class="rank-bar-row">
+            <span class="rank-bar-now" id="rank-bar-now">PHISH SPOTTER</span>
+            <span class="rank-bar-next" id="rank-bar-next">NEXT: PHISH HUNTER</span>
           </div>
-          <table class="ka-table"><thead><tr><th>CyBOK Knowledge Area</th><th class="num">Correct</th><th class="num">Accuracy</th></tr></thead><tbody id="o-ka-body"></tbody></table>
+          <div class="rank-bar-track"><div class="rank-bar-fill" id="rank-bar-fill" style="width:0%"></div></div>
+          <p class="rank-bar-gap" id="rank-bar-gap">200 points to next rank</p>
         </div>
 
-        <div class="tabs">
-          <button class="tab active" data-tab="mistakes" id="tab-mistakes">
-            <i class="ti ti-alert-triangle" style="font-size:13px;vertical-align:-2px;margin-right:3px;"></i>
-            Your mistakes (<span id="o-mistake-count">0</span>)
-          </button>
-          <button class="tab" data-tab="takeaways" id="tab-takeaways">
-            <i class="ti ti-bulb" style="font-size:13px;vertical-align:-2px;margin-right:3px;"></i>
-            Key takeaways
-          </button>
+        <!-- ANSWER TIMELINE -->
+        <div class="answer-timeline">
+          <p class="timeline-l">YOUR RUN</p>
+          <div class="timeline-dots" id="timeline-dots"></div>
         </div>
 
-        <div id="panel-mistakes" style="margin-bottom:18px;max-height:340px;overflow-y:auto;padding-right:4px;"></div>
-
-        <div id="panel-takeaways" class="hidden" style="text-align:left;background:var(--panel2);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:18px;">
-          <p style="font-size:13px;font-weight:600;color:var(--muted);margin:0 0 10px;letter-spacing:.05em;">CYBOK-GROUNDED TAKEAWAYS</p>
-          <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.8;">
-            <li><strong>Authority + urgency = stop and verify.</strong> Banks, IT, lecturers - if a message pressures you, slow down.</li>
-            <li><strong>Navigate to known sites yourself</strong> - never trust links inside messages, even from "trusted" sources.</li>
-            <li><strong>A friend's hacked account becomes a phishing channel.</strong> Verify via a second channel (call them).</li>
-            <li><strong>Real services never ask for passwords or 2FA codes via a link.</strong> Treat any such request as hostile.</li>
-            <li><strong>Check domains for look-alikes</strong> (rnicrosoft vs microsoft, paypa1 vs paypal).</li>
-            <li><strong>Beware baiting</strong> - free prizes, tiny fees, and "you've won" are textbook social engineering.</li>
-          </ul>
+        <!-- COACH STRIP -->
+        <div class="coach-strip" id="coach-strip">
+          <div class="coach-strip-icon"><i class="ti ti-target-arrow"></i></div>
+          <div class="coach-strip-text">
+            <p class="coach-strip-h" id="o-coach-title">-</p>
+            <p class="coach-strip-b" id="o-coach-body">-</p>
+          </div>
         </div>
 
-        <div id="o-achievements" style="display:none;background:linear-gradient(135deg,#1E2761 0%,#0E1330 100%);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px;text-align:left;">
-          <p style="font-size:11px;font-weight:700;color:#FAC775;margin:0 0 8px;letter-spacing:.08em;">★ UNLOCKED THIS RUN</p>
-          <div id="o-ach-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <!-- ACHIEVEMENTS UNLOCKED -->
+        <div id="o-achievements" class="ach-strip" style="display:none;">
+          <p class="ach-strip-l">\u2605 UNLOCKED THIS RUN</p>
+          <div id="o-ach-list" class="ach-strip-list"></div>
         </div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="o-replay"><i class="ti ti-refresh" style="font-size:16px;vertical-align:-3px;margin-right:6px;" aria-hidden="true"></i>Play again</button>
-          <button class="btn" id="o-share"><i class="ti ti-share" style="font-size:16px;vertical-align:-3px;margin-right:6px;" aria-hidden="true"></i>Share score</button>
-          <button class="btn" id="o-menu">Change level</button>
+
+        <!-- BIG CTA -->
+        <button class="play-again-cta" id="o-replay">
+          <div class="play-again-icon"><i class="ti ti-refresh"></i></div>
+          <span class="play-again-text">PLAY AGAIN</span>
+          <i class="ti ti-arrow-right play-again-arrow"></i>
+        </button>
+
+        <div class="end-row-btns">
+          <button class="btn end-btn-sm" id="o-share"><i class="ti ti-share" style="font-size:15px;vertical-align:-3px;margin-right:5px;"></i>Share</button>
+          <button class="btn end-btn-sm" id="o-menu"><i class="ti ti-adjustments-alt" style="font-size:15px;vertical-align:-3px;margin-right:5px;"></i>Change level</button>
         </div>
+
+        <!-- COLLAPSIBLE DETAILS -->
+        <details class="end-details">
+          <summary class="end-details-summary">
+            <span><i class="ti ti-chart-bar"></i> Show full breakdown</span>
+            <span class="end-details-chev"><i class="ti ti-chevron-down"></i></span>
+          </summary>
+          <div class="end-details-body">
+
+            <div class="stats-row">
+              <div class="stat-box"><p class="stat-l">Correct</p><p id="o-correct" class="stat-v">0/7</p></div>
+              <div class="stat-box"><p class="stat-l">Accuracy</p><p id="o-acc" class="stat-v">0%</p></div>
+              <div class="stat-box"><p class="stat-l">Best streak</p><p id="o-streak" class="stat-v">0</p></div>
+            </div>
+
+            <div class="diagnostic">
+              <div class="diag-row">
+                <div class="diag-cell"><p class="diag-l">Avg time used</p><p id="o-hes" class="diag-v">0%</p><p class="diag-help">How much of each decision window you used.</p></div>
+                <div class="diag-cell"><p class="diag-l">Weakest topic</p><p id="o-vuln" class="diag-v">-</p><p class="diag-help">The CyBOK area where you slipped most.</p></div>
+              </div>
+              <table class="ka-table"><thead><tr><th>Topic</th><th class="num">Correct</th><th class="num">Accuracy</th></tr></thead><tbody id="o-ka-body"></tbody></table>
+            </div>
+
+            <div class="tabs">
+              <button class="tab active" data-tab="mistakes" id="tab-mistakes">
+                <i class="ti ti-alert-triangle" style="font-size:13px;vertical-align:-2px;margin-right:3px;"></i>
+                Mistakes (<span id="o-mistake-count">0</span>)
+              </button>
+              <button class="tab" data-tab="takeaways" id="tab-takeaways">
+                <i class="ti ti-bulb" style="font-size:13px;vertical-align:-2px;margin-right:3px;"></i>
+                Key takeaways
+              </button>
+            </div>
+
+            <div id="panel-mistakes" style="margin-bottom:18px;max-height:340px;overflow-y:auto;padding-right:4px;"></div>
+
+            <div id="panel-takeaways" class="hidden" style="text-align:left;background:var(--panel2);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:18px;">
+              <p style="font-size:13px;font-weight:600;color:var(--muted);margin:0 0 10px;letter-spacing:.05em;">REMEMBER THESE 6</p>
+              <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.8;">
+                <li><strong>Pressure = pause.</strong> Authority + urgency is the classic trap.</li>
+                <li><strong>Open it yourself.</strong> Never click login links - use bookmarks or apps.</li>
+                <li><strong>Hacked friends phish too.</strong> Verify weird requests by calling.</li>
+                <li><strong>Real services never ask for 2FA codes.</strong> Treat any such ask as hostile.</li>
+                <li><strong>Domains lie.</strong> rnicrosoft != microsoft. paypa1 != paypal.</li>
+                <li><strong>Free isn\u0027t free.</strong> Prizes, tiny fees and "you\u0027ve won" = bait.</li>
+              </ul>
+            </div>
+
+          </div>
+        </details>
+
       </div>
     </div>
   </div>
