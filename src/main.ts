@@ -3,7 +3,7 @@ import { SCENARIOS, LEVELS, type Scenario } from './data';
 import { createInitialState, processAnswer, evaluateDiagnosis, type GameState } from './logic';
 
 const CONFETTI_COLORS = ['#FFD93D','#FF6B6B','#4ECDC4','#5DCAA5','#FAC775','#A78BFA','#60A5FA','#F472B6','#34D399'];
-const $ = (id: string) => document.getElementById(id) as HTMLElement;
+const $ = (id: string) => (document.getElementById(id) || (() => { console.warn('[phish] missing #'+id); return document.createElement('div'); })()) as HTMLElement;
 
 let state: GameState = createInitialState(LEVELS[0]);
 let currentLevel = LEVELS[0];
@@ -105,6 +105,8 @@ function practiceAnswer(c: string) {
   $("pr-status").textContent = c === "Suspicious" ? "Spotted it. This is suspicious." : "Not quite - here's why. This is suspicious.";
   $("pr-explain").classList.remove("hidden");
   $("pr-go").classList.remove("hidden");
+  // v2.3.4: scroll Start Real Game into view so user always sees it
+  setTimeout(() => { try { $("pr-start").scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} }, 80);
 }
 
 function startGame(li: number) {
@@ -356,13 +358,21 @@ function showAnatomy(s: Scenario, reason: string) {
   $("m-flag-label").classList.remove("show");
   $("m-show-deep").classList.remove("hidden");
   $("g-modal").classList.remove("hidden");
+  // v2.3.2 safety: if user doesnt dismiss in 12s, force advance
+  setTimeout(() => { if (state.modalOpen) { console.warn("[phish] safety auto-dismiss"); dismissModal(); } }, 12000);
 }
 
 function dismissModal() {
   if (!state.modalOpen) return;
   state.modalOpen = false;
-  $("g-modal").classList.add("hidden");
-  if (state.lives <= 0) { gameOver(); } else { next(); }
+  try { $("g-modal").classList.add("hidden"); } catch (e) { console.warn(e); }
+  try {
+    if (state.lives <= 0) { gameOver(); } else { next(); }
+  } catch (e) {
+    console.error('[phish] dismiss->next failed, force advancing:', e);
+    state.idx++;
+    if (state.idx >= deck.length) { try { gameOver(); } catch(_) {} } else { try { spawn(); } catch(_) {} }
+  }
 }
 
 function feedback(ok: boolean, s: Scenario) {
@@ -598,6 +608,7 @@ function switchTab(name: string) {
 buildLevels();
 show("screen-start"); // Initialize the first screen properly
 
+$("pr-back")?.addEventListener("click", () => { document.body.classList.remove("is-playing"); show("screen-start"); });
 $("pr-safe")?.addEventListener("click", () => practiceAnswer("Safe"));
 $("pr-sus")?.addEventListener("click", () => practiceAnswer("Suspicious"));
 $("pr-start")?.addEventListener("click", () => startGame(pendingLevel));
@@ -617,6 +628,16 @@ $("g-quit")?.addEventListener("click", () => {
   show("screen-start");
 });
 $("m-dismiss")?.addEventListener("click", dismissModal);
+// v2.3.2: backdrop click also dismisses; Space/Enter also dismiss; safety timeout for stuck modals
+$("g-modal")?.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).id === "g-modal") dismissModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (state.modalOpen && (e.key === " " || e.key === "Enter" || e.key === "Escape")) {
+    e.preventDefault(); dismissModal();
+  }
+});
+
 $("m-show-deep")?.addEventListener("click", () => {
   $("m-chips").classList.add("show");
   $("m-flag-label").classList.add("show");

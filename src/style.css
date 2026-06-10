@@ -734,3 +734,38 @@ body.is-playing #g-vignette { animation-name: urgentLite !important; }
   background: linear-gradient(135deg, #F59E0B 0%, #DC2626 100%) !important;
   border-color: #FCD34D !important;
 }
+
+
+/* v2.3.4 — Persona avatar animation */
+.persona { display: block; filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)) drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
+.persona-legs { transform-origin: 40px 70px; animation: personaRun .5s ease-in-out infinite alternate; }
+@keyframes personaRun {
+  0%   { transform: rotate(-3deg) translateY(0); }
+  100% { transform: rotate(3deg) translateY(-2px); }
+}
+.persona-legs rect:nth-child(1) { animation: legA .55s ease-in-out infinite alternate; transform-origin: 33px 72px; }
+.persona-legs rect:nth-child(2) { animation: legB .55s ease-in-out infinite alternate; transform-origin: 47px 72px; }
+@keyframes legA { 0% { transform: rotate(-12deg); } 100% { transform: rotate(8deg); } }
+@keyframes legB { 0% { transform: rotate(10deg);  } 100% { transform: rotate(-10deg); } }
+
+/* v2.3.4 — Make sure vibrant buttons are saturated (force override any cached pastel) */
+#g-safe, #pr-safe {
+  background: linear-gradient(135deg, #34D399 0%, #10B981 60%, #047857 100%) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  font-weight: 800 !important;
+  font-size: 18px !important;
+  box-shadow: 0 8px 24px rgba(16,185,129,.5), inset 0 1px 0 rgba(255,255,255,.3) !important;
+}
+#g-sus, #pr-sus {
+  background: linear-gradient(135deg, #FB7185 0%, #EF4444 60%, #B91C1C 100%) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  font-weight: 800 !important;
+  font-size: 18px !important;
+  box-shadow: 0 8px 24px rgba(239,68,68,.5), inset 0 1px 0 rgba(255,255,255,.3) !important;
+}
+#g-safe kbd, #pr-safe kbd, #g-sus kbd, #pr-sus kbd { background: rgba(255,255,255,.2) !important; color: #fff !important; border-color: rgba(255,255,255,.4) !important; }
+
+/* Practice back button hover */
+#pr-back:hover { background: rgba(59,130,246,.1) !important; }
