@@ -664,3 +664,73 @@ kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid rgba(0,
   #g-msg #g-icon { font-size: 30px !important; }
   .tl-dot { width: 18px; height: 18px; font-size: 10px; }
 }
+
+/* ========================================================== */
+/* v2.3.1 - Perf + button vibrancy                              */
+/* ========================================================== */
+
+/* Pause/hide expensive background animations during a run */
+body.is-playing #bg-floaters { display: none !important; }
+body.is-playing .hero-icon,
+body.is-playing .hero-ring,
+body.is-playing .hero-hook,
+body.is-playing .hero-fish,
+body.is-playing .hero-badge,
+body.is-playing .preview-msg,
+body.is-playing .preview-lane {
+  animation: none !important;
+}
+body.is-playing .final-score-card::before { animation: none !important; }
+
+/* Reduce in-game urgency animation cost */
+@keyframes urgentLite {
+  0%, 60% { box-shadow: inset 0 0 0 rgba(226,75,74,0); }
+  100%    { box-shadow: inset 0 0 50px rgba(226,75,74,.55); }
+}
+body.is-playing #g-vignette { animation-name: urgentLite !important; }
+
+/* Vibrant Safe / Suspicious answer buttons */
+#g-safe {
+  background: linear-gradient(135deg, #34D399 0%, #10B981 60%, #047857 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(16,185,129,.45), inset 0 1px 0 rgba(255,255,255,.3) !important;
+  border: none !important;
+  font-weight: 800 !important;
+  font-size: 18px !important;
+  letter-spacing: .04em !important;
+}
+#g-safe:hover { background: linear-gradient(135deg, #5EEAB0 0%, #10B981 100%) !important; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(16,185,129,.55) !important; }
+#g-sus {
+  background: linear-gradient(135deg, #FB7185 0%, #EF4444 60%, #B91C1C 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(239,68,68,.45), inset 0 1px 0 rgba(255,255,255,.3) !important;
+  border: none !important;
+  font-weight: 800 !important;
+  font-size: 18px !important;
+  letter-spacing: .04em !important;
+}
+#g-sus:hover { background: linear-gradient(135deg, #FFA0AC 0%, #EF4444 100%) !important; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(239,68,68,.55) !important; }
+
+.hud { font-weight: 600; }
+
+/* PLAY CTA on start screen - electric-blue/magenta gradient */
+.play-cta {
+  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #EC4899 100%) !important;
+  box-shadow: 0 14px 36px rgba(139,92,246,.4), 0 0 32px rgba(236,72,153,.25), inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+.play-cta:hover {
+  box-shadow: 0 18px 44px rgba(139,92,246,.55), 0 0 48px rgba(236,72,153,.35) !important;
+}
+.play-cta .play-icon { background: linear-gradient(135deg, #FBBF24 0%, #F97316 100%) !important; }
+
+/* PLAY AGAIN on end screen */
+.play-again-cta {
+  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #EC4899 100%) !important;
+  box-shadow: 0 14px 36px rgba(139,92,246,.45), 0 0 32px rgba(236,72,153,.3), inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+
+/* Daily Challenge button */
+.daily-btn {
+  background: linear-gradient(135deg, #F59E0B 0%, #DC2626 100%) !important;
+  border-color: #FCD34D !important;
+}

@@ -19,6 +19,7 @@ function show(s: string) {
   });
   const target = document.getElementById(s);
   if(target) target.classList.remove("hidden");
+  document.body.classList.toggle("is-playing", s === "screen-game" || s === "screen-practice");
 }
 
 function shuffle(a: Scenario[]) {
