@@ -450,6 +450,12 @@ function gameOver() {
   sfx(caught ? "gameover" : "victory");
   haptic(caught ? [60, 80, 60] : [10, 30, 10, 30, 80]);
   if (!caught && state.correct >= 5) { setTimeout(() => fireEndConfetti(), 200); }
+  // v2.1: achievement check + daily completion + UI refresh
+  const newlyUnlocked = checkAchievements();
+  setTimeout(() => renderEndScreenAchievements(newlyUnlocked), 600);
+  if (isDailyRun) { markDailyDone(state.score); isDailyRun = false; }
+  renderAchievementsRow();
+  renderDailyButton();
 }
 
 function buildMistakeReview() {
@@ -700,3 +706,155 @@ if (stage) {
 // Initialise audio context on first user gesture (browser autoplay policy)
 const unlockAudio = () => { getCtx(); document.removeEventListener("pointerdown", unlockAudio); };
 document.addEventListener("pointerdown", unlockAudio, { once: true });
+
+// =====================================================================
+// v2.1 — Achievements, Daily Challenge, Share Score
+// =====================================================================
+
+// ---- Achievements ----
+interface Achievement {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  check: () => boolean;
+}
+const ACHIEVEMENTS: Achievement[] = [
+  { id: "first_win", name: "First Win", icon: "ti-flag", desc: "Survive your first run.",
+    check: () => state.lives > 0 && state.correct >= 1 },
+  { id: "flawless", name: "Flawless", icon: "ti-trophy", desc: "Get 7/7 in a single run.",
+    check: () => state.correct === 7 && state.lives > 0 },
+  { id: "streak_5", name: "Hot Streak", icon: "ti-flame", desc: "Reach a 5-correct streak.",
+    check: () => state.bestStreak >= 5 },
+  { id: "sprint_survivor", name: "Sprint Survivor", icon: "ti-bolt", desc: "Survive Cyber Sprint.",
+    check: () => currentLevel.name === "Cyber Sprint" && state.lives > 0 },
+  { id: "pro", name: "Phishing-aware Pro", icon: "ti-shield-check", desc: "Top awareness rating.",
+    check: () => state.correct >= 7 }
+];
+
+function loadAchievements(): Set<string> {
+  try {
+    const raw = localStorage.getItem("pr_achievements");
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (e) { return new Set(); }
+}
+function saveAchievements(s: Set<string>) {
+  try { localStorage.setItem("pr_achievements", JSON.stringify([...s])); } catch (e) { /* ignore */ }
+}
+function checkAchievements(): Achievement[] {
+  const unlocked = loadAchievements();
+  const newly: Achievement[] = [];
+  for (const a of ACHIEVEMENTS) {
+    if (!unlocked.has(a.id) && a.check()) {
+      unlocked.add(a.id);
+      newly.push(a);
+    }
+  }
+  if (newly.length) saveAchievements(unlocked);
+  return newly;
+}
+function renderAchievementsRow() {
+  const row = $("achievements-row"), grid = $("ach-grid"), count = $("ach-count");
+  if (!row || !grid || !count) return;
+  const unlocked = loadAchievements();
+  if (unlocked.size === 0) { row.style.display = "none"; return; }
+  row.style.display = "block";
+  count.textContent = unlocked.size.toString();
+  grid.innerHTML = ACHIEVEMENTS.map(a => {
+    const got = unlocked.has(a.id);
+    return `<div title="${a.name} — ${a.desc}" style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:50%;background:${got ? "linear-gradient(135deg,#FAC775,#D85A30)" : "#E0DED5"};color:${got ? "#0E1330" : "#A0A0A0"};font-size:22px;${got ? "" : "opacity:.4;"}"><i class="ti ${a.icon}"></i></div>`;
+  }).join("");
+}
+function renderEndScreenAchievements(newly: Achievement[]) {
+  const wrap = $("o-achievements"), list = $("o-ach-list");
+  if (!wrap || !list) return;
+  if (newly.length === 0) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  list.innerHTML = newly.map(a =>
+    `<div style="display:flex;align-items:center;gap:8px;background:rgba(250,199,117,.15);border:1px solid #FAC775;border-radius:999px;padding:6px 12px;color:#FAC775;font-size:13px;font-weight:600;"><i class="ti ${a.icon}" aria-hidden="true"></i>${a.name}</div>`
+  ).join("");
+  sfx("victory");
+  haptic([20, 60, 20, 60, 80]);
+}
+
+// ---- Daily Challenge: deterministic seed per date ----
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function dateSeed(): number {
+  const s = todayKey();
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const r = [...arr];
+  let s = seed || 1;
+  for (let i = r.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) >>> 0;
+    const j = s % (i + 1);
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+function dailyCompletedScore(): number | null {
+  try {
+    const raw = localStorage.getItem("pr_daily_" + todayKey());
+    return raw ? parseInt(raw, 10) || null : null;
+  } catch (e) { return null; }
+}
+function markDailyDone(score: number) {
+  try { localStorage.setItem("pr_daily_" + todayKey(), String(score)); } catch (e) { /* ignore */ }
+}
+let isDailyRun = false;
+function startDaily() {
+  isDailyRun = true;
+  currentLevel = LEVELS[1]; // Regular = fair difficulty
+  deck = seededShuffle(SCENARIOS, dateSeed()).slice(0, 7);
+  state = createInitialState(currentLevel);
+  $("g-score").textContent = "0";
+  setLives();
+  setStreak(0);
+  $("g-paused").classList.add("hidden");
+  $("g-modal").classList.add("hidden");
+  show("screen-game");
+  buildStars();
+  showLaneReminder(() => spawn());
+}
+function renderDailyButton() {
+  const btn = $("daily-btn"), statusEl = $("daily-status");
+  if (!btn || !statusEl) return;
+  btn.style.display = "flex";
+  const done = dailyCompletedScore();
+  statusEl.textContent = done !== null ? `· DONE · ${done.toLocaleString()}` : `· ${todayKey()}`;
+}
+
+// ---- Share Score ----
+async function shareScore() {
+  const text = `I scored ${state.score.toLocaleString()} on Phish Runner: Safe or Suspicious? (${currentLevel.name}, ${state.correct}/7). Beat me at endurak.github.io/phish-runner/`;
+  const shareData = { title: "Phish Runner", text, url: "https://endurak.github.io/phish-runner/" };
+  if (navigator.share) {
+    try { await navigator.share(shareData); haptic([10]); return; }
+    catch (e) { /* user cancelled — fall through to clipboard */ }
+  }
+  if (navigator.clipboard) {
+    try { await navigator.clipboard.writeText(text); toast("Copied to clipboard"); haptic([15]); return; }
+    catch (e) { /* ignore */ }
+  }
+  toast("Share unavailable");
+}
+function toast(msg: string) {
+  const t = document.createElement('div');
+  t.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(14,19,48,.95);color:#FFFFFF;padding:12px 20px;border-radius:24px;font-size:14px;font-weight:500;z-index:9999;pointer-events:none;animation:fadeIn .2s ease-out, fadeOut .3s ease-in 1.6s forwards;";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+// ---- Wire up new buttons (v2.1 hooks for game-over are inside gameOver() itself) ----
+$("daily-btn")?.addEventListener("click", () => { sfx("pop"); haptic([10]); startDaily(); });
+$("o-share")?.addEventListener("click", shareScore);
+
+// Initial render on page load
+renderAchievementsRow();
+renderDailyButton();
