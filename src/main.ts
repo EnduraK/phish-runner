@@ -339,13 +339,12 @@ function ruleMarkup(s: Scenario) {
 }
 
 function showAnatomy(s: Scenario, reason: string) {
-  let title, sub;
-  if (reason === "missed") { title = "Time's up"; sub = "You didn't choose in time - here's what to look for."; }
-  else if (s.answer === "Suspicious") { title = "Missed - that was suspicious"; sub = "The red flags below were the giveaway."; }
-  else { title = "False alarm - that one was safe"; sub = "The markers below are why it was actually safe."; }
-  
+  let title;
+  if (reason === "missed") title = "Time's up";
+  else if (s.answer === "Suspicious") title = "Missed - that was suspicious";
+  else title = "False alarm - that one was safe";
+
   $("m-title").textContent = title;
-  $("m-subtitle").textContent = sub;
   $("m-chips").innerHTML = chipMarkup(s);
   $("m-rule").innerHTML = ruleMarkup(s);
   $("m-target").innerHTML = `<code>${s.breakdown.targetCue}</code>`;
