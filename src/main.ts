@@ -858,3 +858,73 @@ $("o-share")?.addEventListener("click", shareScore);
 // Initial render on page load
 renderAchievementsRow();
 renderDailyButton();
+
+// =====================================================================
+// v2.2 — Anti-boring start screen
+// =====================================================================
+
+// ---- Drifting background floaters ----
+function spawnFloaters() {
+  let container = document.getElementById("bg-floaters");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "bg-floaters";
+    document.body.insertBefore(container, document.body.firstChild);
+  }
+  const icons = ["ti-fish-hook", "ti-mail", "ti-alert-triangle", "ti-shield", "ti-link", "ti-bug", "ti-key", "ti-credit-card", "ti-message-circle"];
+  const W = window.innerWidth;
+  container.innerHTML = "";
+  for (let i = 0; i < 14; i++) {
+    const el = document.createElement("i");
+    const cls = icons[Math.floor(Math.random() * icons.length)];
+    el.className = "ti " + cls + " bg-floater";
+    el.setAttribute("aria-hidden", "true");
+    const left = Math.random() * W;
+    const dur = 14 + Math.random() * 14;
+    const delay = -Math.random() * dur;
+    const drift = (Math.random() * 200 - 100) + "px";
+    const size = 22 + Math.random() * 18;
+    el.style.left = left + "px";
+    el.style.fontSize = size + "px";
+    el.style.animationDuration = dur + "s";
+    el.style.animationDelay = delay + "s";
+    el.style.setProperty("--drift", drift);
+    container.appendChild(el);
+  }
+}
+spawnFloaters();
+window.addEventListener("resize", () => { spawnFloaters(); });
+
+// ---- Selected level for the big PLAY CTA (default Regular) ----
+let selectedLevelIdx = 1; // Regular by default
+
+function renderLevelPills() {
+  const wrap = $("level-pills");
+  if (!wrap) return;
+  wrap.innerHTML = LEVELS.map((L, i) => {
+    const active = i === selectedLevelIdx ? "active" : "";
+    return `<button class="level-pill ${active}" data-i="${i}" data-accent="${L.accent}"><span class="dot"></span>${L.name}</button>`;
+  }).join("");
+  wrap.querySelectorAll<HTMLButtonElement>(".level-pill").forEach(b => {
+    b.addEventListener("click", () => {
+      selectedLevelIdx = parseInt(b.dataset.i || "1", 10);
+      sfx("tick");
+      haptic([6]);
+      renderLevelPills();
+      updatePlayCtaLabel();
+    });
+  });
+}
+function updatePlayCtaLabel() {
+  const lvl = LEVELS[selectedLevelIdx];
+  const el = $("play-cta-lvl");
+  if (el) el.textContent = `${lvl.name} · ${lvl.lives} lives · ${lvl.mult}× points`;
+}
+renderLevelPills();
+updatePlayCtaLabel();
+
+$("play-cta")?.addEventListener("click", () => {
+  sfx("pop");
+  haptic([12]);
+  enterPractice(selectedLevelIdx);
+});

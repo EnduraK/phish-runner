@@ -360,3 +360,102 @@ kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid rgba(0,
   .tabs { font-size: 12px; }
   .tab { padding: 7px 8px; font-size: 12px; }
 }
+
+/* ========================================================== */
+/* v2.2 — Anti-boring: animated background, live preview, big PLAY CTA */
+/* ========================================================== */
+
+/* Drifting phishing-themed background icons */
+#bg-floaters { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg-floater {
+  position: absolute; font-size: 30px; opacity: 0; color: var(--bg);
+  animation: bgFloat linear infinite;
+}
+@keyframes bgFloat {
+  0%   { transform: translate(0, 110vh) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.09; }
+  90%  { opacity: 0.09; }
+  100% { transform: translate(var(--drift, 80px), -10vh) rotate(360deg); opacity: 0; }
+}
+.wrap, #screen-start { position: relative; z-index: 1; }
+
+/* Live mock message — glides in/out on loop inside the preview card */
+.preview-msg {
+  animation: previewGlide 5.5s cubic-bezier(.4,0,.2,1) infinite;
+}
+@keyframes previewGlide {
+  0%   { transform: translateX(-40%) scale(.9); opacity: 0; }
+  18%  { transform: translateX(0)    scale(1);  opacity: 1; }
+  78%  { transform: translateX(0)    scale(1);  opacity: 1; }
+  92%  { transform: translateX(40%)  scale(.92); opacity: 0; }
+  100% { opacity: 0; }
+}
+/* When SAFE / SUS lanes pulse to show "this is when you choose" */
+.preview-lane.preview-safe, .preview-lane.preview-sus {
+  animation: lanePulse 5.5s ease-in-out infinite;
+}
+.preview-lane.preview-sus { animation-delay: -2.75s; }
+@keyframes lanePulse {
+  0%, 70%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  82%           { transform: scale(1.04); box-shadow: 0 0 18px rgba(216,90,48,.25); }
+}
+
+/* Big primary PLAY button */
+.play-cta {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  width: 100%; padding: 22px 28px; margin: 16px 0 12px;
+  background: linear-gradient(135deg, var(--bg) 0%, var(--bg2) 60%, var(--bg3) 100%);
+  color: #fff; border: none; border-radius: var(--radius);
+  font-family: inherit; font-size: 22px; font-weight: 700; letter-spacing: .02em;
+  cursor: pointer; position: relative; overflow: hidden;
+  box-shadow: 0 12px 36px rgba(14,19,48,.28), 0 0 0 1px rgba(255,255,255,.06) inset;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.play-cta:hover { transform: translateY(-3px); box-shadow: 0 18px 44px rgba(14,19,48,.36); }
+.play-cta:active { transform: scale(.985); }
+.play-cta::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(250,199,117,.22) 50%, transparent 70%);
+  transform: translateX(-100%); animation: ctaSheen 3.5s ease-in-out infinite;
+}
+@keyframes ctaSheen { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
+.play-cta .play-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--gold); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; flex: none;
+  animation: playPulse 1.8s ease-in-out infinite;
+}
+@keyframes playPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); box-shadow: 0 0 24px rgba(250,199,117,.5); }
+}
+.play-cta .play-meta { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.play-cta .play-meta .play-lvl { font-size: 12px; font-weight: 600; opacity: .65; letter-spacing: .12em; text-transform: uppercase; }
+.play-cta .play-meta .play-main { font-size: 22px; font-weight: 700; }
+.play-cta .play-arrow { margin-left: auto; font-size: 26px; opacity: .85; }
+
+/* Level pills (replacing the prominent grid) */
+.level-pills { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 4px 0 8px; }
+.level-pill {
+  padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: #fff; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: transform .15s, border-color .15s, background .15s;
+}
+.level-pill:hover { transform: translateY(-1px); }
+.level-pill.active { background: var(--bg); color: #fff; border-color: var(--bg); }
+.level-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+.level-pill[data-accent="safe"]  .dot { background: var(--safe); }
+.level-pill[data-accent="blue"]  .dot { background: var(--blue); }
+.level-pill[data-accent="amber"] .dot { background: var(--amber); }
+.level-pill[data-accent="sus"]   .dot { background: var(--sus); }
+
+.pick-label { text-align: center; font-size: 12px; color: var(--muted); margin: 8px 0 6px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600; }
+
+@media (max-width: 600px) {
+  .play-cta { padding: 18px 18px; font-size: 18px; }
+  .play-cta .play-icon { width: 40px; height: 40px; font-size: 22px; }
+  .play-cta .play-meta .play-main { font-size: 19px; }
+  .bg-floater { font-size: 22px; }
+}
