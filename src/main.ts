@@ -60,6 +60,13 @@ function show(s: string) {
   const target = document.getElementById(s);
   if(target) target.classList.remove("hidden");
   document.body.classList.toggle("is-playing", s === "screen-game" || s === "screen-practice");
+  // v2.4.1: entering the game screen always clears any stale pause overlay
+  if (s === "screen-game") {
+    const gp = document.getElementById("g-paused");
+    if (gp) gp.classList.add("hidden");
+    const gm = document.getElementById("g-modal");
+    if (gm) gm.classList.add("hidden");
+  }
 }
 
 function shuffle(a: Scenario[]) {
@@ -166,12 +173,25 @@ function startGame(li: number) {
 }
 
 function showLaneReminder(then: () => void) {
+  // v2.4.1: lane reminder is now tap-to-skip so players never get stuck waiting.
+  // Auto-advance after 2s. Tapping the reminder OR the stage skips immediately.
   const stage = $("stage");
   const r = document.createElement('div');
   r.className = 'lane-reminder';
   r.innerHTML = '<span class="lr-tag lr-safe"><i class="ti ti-arrow-left-circle" aria-hidden="true"></i> SAFE LANE</span><span class="lr-vs">vs</span><span class="lr-tag lr-sus">SUSPICIOUS LANE <i class="ti ti-arrow-right-circle" aria-hidden="true"></i></span>';
   stage.appendChild(r);
-  setTimeout(() => { r.remove(); if(then) then(); }, 2300);
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    try { r.remove(); } catch(_) {}
+    if (then) then();
+  };
+  r.addEventListener('click', finish);
+  setTimeout(finish, 2000);
+  // Failsafe: if for any reason the timeout never fires (page hidden, throttled tab),
+  // a backup timer guarantees we never leave the message stuck on "Loading..."
+  setTimeout(finish, 4000);
 }
 
 function highlightMalicious(t: string) {
@@ -291,7 +311,8 @@ function pauseGame() {
 }
 
 function resumeGame() {
-  if (!state.paused) return;
+  // v2.4.1: ALWAYS hide overlay and reset paused, even if state thinks we are not paused.
+  // Fixes the "Paused + Loading..." stuck state where overlay shows but state desyncs.
   state.paused = false;
   $("g-paused").classList.add("hidden");
   $("g-msg").style.animationPlayState = "running";
@@ -679,7 +700,7 @@ $("o-replay")?.addEventListener("click", () => startGame(LEVELS.indexOf(currentL
 $("o-menu")?.addEventListener("click", () => show("screen-start"));
 $("g-safe")?.addEventListener("click", () => answer("Safe"));
 $("g-sus")?.addEventListener("click", () => answer("Suspicious"));
-$("g-pause")?.addEventListener("click", togglePause);
+$("g-pause")?.addEventListener("click", () => { if (state.turnStart > 0) togglePause(); });
 $("g-resume")?.addEventListener("click", resumeGame);
 // v2.4: helper - abandon current run cleanly (used by Quit, Home, ESC)
 function quitToMenu(skipConfirm = false) {
@@ -751,7 +772,10 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
   if ($("screen-game").classList.contains("hidden")) return;
   if (e.key === " " || e.code === "Space") {
     e.preventDefault();
-    if (state.modalOpen) dismissModal(); else togglePause();
+    if (state.modalOpen) dismissModal();
+    // v2.4.1: only allow pause once the first scenario is on screen
+    // (prevents the "Paused + Loading..." stuck state during lane reminder)
+    else if (state.turnStart > 0) togglePause();
     return;
   }
   // v2.4: ESC = back to main menu (asks if mid-run)
