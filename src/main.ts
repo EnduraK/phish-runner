@@ -160,16 +160,31 @@ function startGame(li: number) {
   currentLevel = LEVELS[li];
   deck = shuffle(SCENARIOS).slice(0, 7);
   state = createInitialState(currentLevel);
-  
+
   $("g-score").textContent = "0";
   setLives();
   setStreak(0);
-  
+
   $("g-paused").classList.add("hidden");
   $("g-modal").classList.add("hidden");
   show("screen-game");
   buildStars();
-  spawn();  // v2.4.2: no pre-game delay — scenario renders immediately so no race window
+  try { spawn(); } catch (e) { console.error("[phish] spawn failed at startGame:", e); }
+
+  // v2.4.3 WATCHDOG: if for any reason the message text is still "Loading..." 600ms
+  // after game start, force the scenario to render. Guarantees no stuck "Loading + Paused" state.
+  setTimeout(() => {
+    const txt = document.getElementById("g-text");
+    if (txt && /loading/i.test(txt.textContent || "")) {
+      console.warn("[phish] watchdog: message stuck on Loading - force respawn");
+      try { spawn(); } catch (e) { console.error("[phish] watchdog respawn failed:", e); }
+    }
+    // ALSO force-hide pause overlay just in case it lingered
+    const gp = document.getElementById("g-paused");
+    if (gp && !gp.classList.contains("hidden") && !state.paused) {
+      gp.classList.add("hidden");
+    }
+  }, 600);
 }
 
 
@@ -646,6 +661,17 @@ function switchTab(name: string) {
 // Event Listeners
 buildLevels();
 show("screen-start"); // Initialize the first screen properly
+// v2.4.3: belt-and-braces — re-assert start screen after init in case any earlier code touched screens
+setTimeout(() => {
+  const sg = document.getElementById("screen-game");
+  const so = document.getElementById("screen-over");
+  if (sg && !sg.classList.contains("hidden")) sg.classList.add("hidden");
+  if (so && !so.classList.contains("hidden")) so.classList.add("hidden");
+  const ss = document.getElementById("screen-start");
+  if (ss && ss.classList.contains("hidden")) ss.classList.remove("hidden");
+  const gp = document.getElementById("g-paused");
+  if (gp) gp.classList.add("hidden");
+}, 50);
 
 // v2.3.6: PWA install support
 let deferredInstall: any = null;
@@ -723,6 +749,10 @@ function endRunNow(skipConfirm = false) {
 }
 
 $("g-quit")?.addEventListener("click", () => quitToMenu(true));
+// v2.4.3: clicking the dark backdrop area of the pause overlay also resumes
+$("g-paused")?.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).id === "g-paused") resumeGame();
+});
 $("g-home")?.addEventListener("click", () => quitToMenu(false));
 $("g-restart")?.addEventListener("click", () => restartRun(false));
 $("g-pause-restart")?.addEventListener("click", () => restartRun(true));
