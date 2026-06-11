@@ -823,3 +823,4 @@ body.is-playing #g-vignette { animation-name: urgentLite !important; }
 #ach-grid { gap: 8px !important; }
 #install-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16,185,129,.45); }
 #install-btn:active { transform: scale(.97); }
+@media (hover:none){#g-keys-hint{display:none}}

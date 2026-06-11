@@ -161,6 +161,14 @@ function startGame(li: number) {
   deck = shuffle(SCENARIOS).slice(0, 7);
   state = createInitialState(currentLevel);
 
+  // v2.5: one-time onboarding nudge — shows keyboard shortcuts on first ever run
+  try {
+    if (!localStorage.getItem("pr_onboarded")) {
+      toast("Tip: ← Safe  ·  → Suspicious  ·  SPACE pause", 3000);
+      localStorage.setItem("pr_onboarded", "1");
+    }
+  } catch (e) { /* localStorage unavailable in some contexts; ignore */ }
+
   $("g-score").textContent = "0";
   setLives();
   setStreak(0);
@@ -1061,12 +1069,13 @@ async function shareScore() {
   }
   toast("Share unavailable");
 }
-function toast(msg: string) {
+function toast(msg: string, durationMs: number = 2000) {
   const t = document.createElement('div');
-  t.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(14,19,48,.95);color:#FFFFFF;padding:12px 20px;border-radius:24px;font-size:14px;font-weight:500;z-index:9999;pointer-events:none;animation:fadeIn .2s ease-out, fadeOut .3s ease-in 1.6s forwards;";
+  const lifeOut = Math.max(0, (durationMs - 400) / 1000);
+  t.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(14,19,48,.95);color:#FFFFFF;padding:12px 20px;border-radius:24px;font-size:14px;font-weight:500;z-index:9999;pointer-events:none;animation:fadeIn .2s ease-out, fadeOut .3s ease-in " + lifeOut + "s forwards;";
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2000);
+  setTimeout(() => t.remove(), durationMs);
 }
 
 // ---- Wire up new buttons (v2.1 hooks for game-over are inside gameOver() itself) ----
