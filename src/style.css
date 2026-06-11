@@ -1,3 +1,32 @@
+/* ============================================================================
+ * src/style.css — visual design system for Phish Runner.
+ *
+ * Organised in version-banded sections (v2.0, v2.1, v2.2, v2.3 …) so that
+ * each shipping iteration is traceable. Each section's heading comment
+ * explains what shipped in that version and why.
+ *
+ * KEY DESIGN PRINCIPLES
+ * ---------------------
+ *   1. CyBOK-grounded colour semantics.
+ *      Green = Safe lane, Coral-red = Suspicious lane. The colours were
+ *      kept consistent across the start-screen preview, in-game lanes,
+ *      end-screen breakdown and mistake-review cards so the player only
+ *      has to learn the mapping once.
+ *
+ *   2. Animation as feedback, not decoration.
+ *      Every animation in this file has a behavioural purpose — the urgency
+ *      vignette signals time pressure, the streak shake signals momentum,
+ *      the confetti rewards a correct streak, the caught-by-phish SVG
+ *      illustrates the failure state. Animations that slowed gameplay
+ *      (idle background floaters) are paused via body.is-playing while a
+ *      run is in progress (see v2.3.1 perf pass).
+ *
+ *   3. Responsive + mobile-first.
+ *      A @media (max-width: 600px) block at the bottom collapses fonts,
+ *      padding and stage heights for phone viewports — the start-screen
+ *      hero animation also gets simplified there to keep low-end devices
+ *      responsive.
+ * ============================================================================ */
 :root{
   --bg:#0e1330; --bg2:#1b2858; --bg3:#2a3a7a; --panel:#ffffff; --panel2:#f6f5f1;
   --ink:#1a1a1a; --muted:#6e6e6e; --line:rgba(0,0,0,0.1);

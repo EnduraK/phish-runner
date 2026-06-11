@@ -1,3 +1,43 @@
+/**
+ * src/main.ts — the DOM orchestrator (separation of concerns layer 3 of 3).
+ *
+ * This is the only file in the project that touches the DOM directly. It
+ * imports scenarios from data.ts and pure-state transitions from logic.ts,
+ * then binds them to the rendered page — screens, animations, click handlers,
+ * keyboard shortcuts, sound effects, vibration, achievements, daily challenge,
+ * share API, PWA install prompt.
+ *
+ * WHY THIS SEPARATION
+ * -------------------
+ * The three-file split (data / logic / main) is textbook separation of
+ * concerns (Sommerville, 2016). The benefits, in plain terms:
+ *
+ *   - logic.ts can be unit-tested without a browser (and is — see
+ *     logic.test.ts and the GitHub Actions CI/CD output).
+ *   - data.ts can be edited by the team's researcher without risk of
+ *     breaking the game loop.
+ *   - main.ts can be replaced wholesale (e.g., port to React Native, or
+ *     to a WebGL renderer) without touching either of the other two.
+ *
+ * EVENT FLOW (one round)
+ * ----------------------
+ *   1. spawn()         — pulls deck[state.idx] from data.ts, renders the
+ *                        message card, kicks off the urgency animation.
+ *   2. user clicks Safe or Suspicious (or keyboard / swipe / timeout)
+ *   3. answer()        — calls processAnswer() from logic.ts to compute
+ *                        the new state immutably, then renders the result.
+ *   4. collide()       — on a wrong answer, opens the mid-game modal with
+ *                        the red-flag chips and rule callout from data.ts.
+ *   5. next() / gameOver() — advances the deck or ends the run.
+ *
+ * v2.4 BUTTONS PACK
+ * -----------------
+ * In v2.4 we added an explicit Back-to-menu (Home) and Restart icon to the
+ * HUD plus an End-run option inside the pause overlay, because external
+ * testers (Josh, Saleem) both reported they wanted to bail out of a long
+ * Cyber Sprint run without losing their highest streak. ESC and R are
+ * bound for keyboard players. See quitToMenu / restartRun / endRunNow below.
+ */
 import './style.css';
 import { SCENARIOS, LEVELS, type Scenario } from './data';
 import { createInitialState, processAnswer, evaluateDiagnosis, type GameState } from './logic';
@@ -641,7 +681,11 @@ $("g-safe")?.addEventListener("click", () => answer("Safe"));
 $("g-sus")?.addEventListener("click", () => answer("Suspicious"));
 $("g-pause")?.addEventListener("click", togglePause);
 $("g-resume")?.addEventListener("click", resumeGame);
-$("g-quit")?.addEventListener("click", () => {
+// v2.4: helper - abandon current run cleanly (used by Quit, Home, ESC)
+function quitToMenu(skipConfirm = false) {
+  if (!skipConfirm && !state.paused && state.score > 0 && state.lives > 0) {
+    if (!confirm("End this run and go back to the main menu? Your progress will be lost.")) return;
+  }
   if (timer) clearTimeout(timer);
   if (advanceT) clearTimeout(advanceT);
   state.paused = false;
@@ -649,7 +693,40 @@ $("g-quit")?.addEventListener("click", () => {
   $("g-paused").classList.add("hidden");
   $("g-modal").classList.add("hidden");
   show("screen-start");
-});
+}
+
+// v2.4: helper - restart current run on the same difficulty (used by Restart button + R key)
+function restartRun(skipConfirm = false) {
+  if (!skipConfirm && state.score > 0 && state.lives > 0) {
+    if (!confirm("Restart this run from message 1? Your current score will be lost.")) return;
+  }
+  if (timer) clearTimeout(timer);
+  if (advanceT) clearTimeout(advanceT);
+  state.modalOpen = false;
+  $("g-paused").classList.add("hidden");
+  $("g-modal").classList.add("hidden");
+  startGame(LEVELS.indexOf(currentLevel));
+}
+
+// v2.4: helper - end the run abruptly and reveal the end screen with whatever score they have
+function endRunNow(skipConfirm = false) {
+  if (!skipConfirm) {
+    if (!confirm("End this run now and see your results? You won't see the remaining messages.")) return;
+  }
+  if (timer) clearTimeout(timer);
+  if (advanceT) clearTimeout(advanceT);
+  state.paused = false;
+  state.modalOpen = false;
+  $("g-paused").classList.add("hidden");
+  $("g-modal").classList.add("hidden");
+  gameOver();
+}
+
+$("g-quit")?.addEventListener("click", () => quitToMenu(true));
+$("g-home")?.addEventListener("click", () => quitToMenu(false));
+$("g-restart")?.addEventListener("click", () => restartRun(false));
+$("g-pause-restart")?.addEventListener("click", () => restartRun(true));
+$("g-end-now")?.addEventListener("click", () => endRunNow(true));
 $("m-dismiss")?.addEventListener("click", dismissModal);
 // v2.3.2: backdrop click also dismisses; Space/Enter also dismiss; safety timeout for stuck modals
 $("g-modal")?.addEventListener("click", (e) => {
@@ -675,6 +752,19 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (e.key === " " || e.code === "Space") {
     e.preventDefault();
     if (state.modalOpen) dismissModal(); else togglePause();
+    return;
+  }
+  // v2.4: ESC = back to main menu (asks if mid-run)
+  if (e.key === "Escape") {
+    e.preventDefault();
+    if (state.modalOpen) { dismissModal(); return; }
+    quitToMenu(false);
+    return;
+  }
+  // v2.4: R = restart current run
+  if (e.key === "r" || e.key === "R") {
+    e.preventDefault();
+    restartRun(false);
     return;
   }
   if (state.paused || state.modalOpen) return;

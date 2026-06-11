@@ -43,7 +43,30 @@
           <p class="sub">Spot the red flags. Choose before it catches you.</p>
           <span class="pill" style="background:var(--purple-bg);color:var(--purple-ink);margin-top:14px;">503IT - Group C - CyBOK-grounded</span><div style="margin-top:10px;"><button id="install-btn" type="button" style="display:none;align-items:center;gap:6px;background:linear-gradient(135deg,#10B981,#047857);color:#fff;border:none;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,.3);"><i class="ti ti-device-mobile" style="font-size:16px;"></i>Install on your phone</button></div>
         </div>
-        <div class="stat-strip start-stat-strip">
+
+        <!-- v2.4: PLAY block lifted above the fold so users don't have to scroll to start -->
+        <button id="daily-btn" class="daily-btn" style="display:none;width:100%;margin:14px 0 8px;padding:16px 18px;border:2px solid var(--gold,#FAC775);background:linear-gradient(135deg,#1E2761 0%,#0E1330 100%);color:#FFFFFF;border-radius:var(--radius-sm);cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;font-family:inherit;">
+          <div style="flex:none;width:44px;height:44px;border-radius:50%;background:#FAC775;display:flex;align-items:center;justify-content:center;color:#0E1330;"><i class="ti ti-calendar-star" style="font-size:24px;"></i></div>
+          <div style="flex:1;">
+            <p style="margin:0;font-weight:700;font-size:15px;color:#FAC775;letter-spacing:.04em;">DAILY CHALLENGE <span id="daily-status" style="font-size:11px;font-weight:600;opacity:.7;margin-left:6px;"></span></p>
+            <p style="margin:2px 0 0;font-size:13px;color:#CADCFC;">Same 7 scenarios as everyone today. Beat your friends.</p>
+          </div>
+          <i class="ti ti-chevron-right" style="font-size:20px;color:#FAC775;flex:none;"></i>
+        </button>
+        <button id="play-cta" class="play-cta" aria-label="Play">
+          <div class="play-icon"><i class="ti ti-player-play-filled" aria-hidden="true"></i></div>
+          <div class="play-meta">
+            <span class="play-lvl" id="play-cta-lvl">Regular · 4 lives · 2× points</span>
+            <span class="play-main">PLAY</span>
+          </div>
+          <i class="ti ti-arrow-right play-arrow" aria-hidden="true"></i>
+        </button>
+        <p class="pick-label">or pick a difficulty</p>
+        <div class="level-pills" id="level-pills"></div>
+        <div class="start-grid" style="display:none;" id="level-grid"></div>
+
+        <!-- v2.4: supporting content (preview/stats/achievements) moved below the fold -->
+        <div class="stat-strip start-stat-strip" style="margin-top:18px;">
           <div class="stat-pill"><span class="stat-pill-icon" style="color:var(--safe);"><i class="ti ti-database"></i></span><p class="stat-pill-val">32</p><p class="stat-pill-l">Scenarios</p></div>
           <div class="stat-pill"><span class="stat-pill-icon" style="color:var(--amber);"><i class="ti ti-stairs-up"></i></span><p class="stat-pill-val">4</p><p class="stat-pill-l">Difficulty levels</p></div>
           <div class="stat-pill"><span class="stat-pill-icon" style="color:var(--sus);"><i class="ti ti-radar-2"></i></span><p class="stat-pill-val">Live</p><p class="stat-pill-l">Threat Scanner</p></div>
@@ -66,25 +89,6 @@
           </div>
         </div>
         <p class="play-prompt start-prompt"><i class="ti ti-player-play" aria-hidden="true"></i> Read it, then swerve <strong style="color:var(--safe-ink);">LEFT for Safe</strong> or <strong style="color:var(--sus-ink);">RIGHT for Suspicious</strong> before it reaches you.</p>
-        <button id="daily-btn" class="daily-btn" style="display:none;width:100%;margin:12px 0 8px;padding:16px 18px;border:2px solid var(--gold,#FAC775);background:linear-gradient(135deg,#1E2761 0%,#0E1330 100%);color:#FFFFFF;border-radius:var(--radius-sm);cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;font-family:inherit;">
-          <div style="flex:none;width:44px;height:44px;border-radius:50%;background:#FAC775;display:flex;align-items:center;justify-content:center;color:#0E1330;"><i class="ti ti-calendar-star" style="font-size:24px;"></i></div>
-          <div style="flex:1;">
-            <p style="margin:0;font-weight:700;font-size:15px;color:#FAC775;letter-spacing:.04em;">DAILY CHALLENGE <span id="daily-status" style="font-size:11px;font-weight:600;opacity:.7;margin-left:6px;"></span></p>
-            <p style="margin:2px 0 0;font-size:13px;color:#CADCFC;">Same 7 scenarios as everyone today. Beat your friends.</p>
-          </div>
-          <i class="ti ti-chevron-right" style="font-size:20px;color:#FAC775;flex:none;"></i>
-        </button>
-        <button id="play-cta" class="play-cta" aria-label="Play">
-          <div class="play-icon"><i class="ti ti-player-play-filled" aria-hidden="true"></i></div>
-          <div class="play-meta">
-            <span class="play-lvl" id="play-cta-lvl">Regular · 4 lives · 2× points</span>
-            <span class="play-main">PLAY</span>
-          </div>
-          <i class="ti ti-arrow-right play-arrow" aria-hidden="true"></i>
-        </button>
-        <p class="pick-label">or pick a difficulty</p>
-        <div class="level-pills" id="level-pills"></div>
-        <div class="start-grid" style="display:none;" id="level-grid"></div>
         <div id="achievements-row" style="margin-top:14px;display:none;">
           <p style="text-align:center;font-size:11px;color:var(--muted);margin:0 0 8px;letter-spacing:.06em;font-weight:600;">ACHIEVEMENTS <span id="ach-count">0</span> / 5</p>
           <div id="ach-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;"></div>
@@ -134,8 +138,10 @@
         <div style="position:absolute;top:50%;left:0;right:0;bottom:0;pointer-events:none;"><div style="position:absolute;top:0;bottom:0;left:50%;width:260px;clip-path:polygon(45% 0,55% 0,100% 100%,0 100%);transform:translateX(-50%);"><div style="position:absolute;left:0;bottom:0;width:50%;height:100%;background:linear-gradient(to top,rgba(29,158,117,.18),transparent);"></div><div style="position:absolute;right:0;bottom:0;width:50%;height:100%;background:linear-gradient(to top,rgba(216,90,48,.18),transparent);"></div></div></div>
         <div id="g-vignette" class="vignette"></div>
 
-        <button id="g-pause" class="iconbtn" style="position:absolute;top:9px;left:11px;z-index:14;" aria-label="Pause"><i class="ti ti-player-pause" aria-hidden="true"></i></button>
-        <button id="g-mute" class="iconbtn" style="position:absolute;top:9px;right:11px;z-index:14;" aria-label="Toggle sound"><i class="ti ti-volume" aria-hidden="true"></i></button>
+        <button id="g-pause" class="iconbtn" style="position:absolute;top:9px;left:11px;z-index:14;" aria-label="Pause" title="Pause (Space)"><i class="ti ti-player-pause" aria-hidden="true"></i></button>
+        <button id="g-home" class="iconbtn" style="position:absolute;top:9px;left:59px;z-index:14;" aria-label="Back to main menu" title="Back to main menu (Esc)"><i class="ti ti-home" aria-hidden="true"></i></button>
+        <button id="g-restart" class="iconbtn" style="position:absolute;top:9px;left:107px;z-index:14;" aria-label="Restart this run" title="Restart this run (R)"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+        <button id="g-mute" class="iconbtn" style="position:absolute;top:9px;right:11px;z-index:14;" aria-label="Toggle sound" title="Mute / unmute (M)"><i class="ti ti-volume" aria-hidden="true"></i></button>
 
         <div class="hud" style="position:absolute;top:14px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:22px;color:#fff;z-index:10;">
           <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:11px;color:rgba(255,255,255,.7);">SCORE</span><span id="g-score" style="font-size:19px;font-weight:600;">0</span></div>
@@ -166,7 +172,12 @@
           <div style="font-size:42px;color:#fff;margin-bottom:6px;"><i class="ti ti-player-pause" aria-hidden="true"></i></div>
           <p style="font-size:25px;font-weight:600;color:#fff;margin:0 0 4px;">Paused</p>
           <p style="font-size:13px;color:rgba(255,255,255,.7);margin:0 0 18px;">Take your time. Nothing moves until you resume.</p>
-          <div style="display:flex;gap:10px;"><button class="btn btn-primary" id="g-resume" style="font-size:15px;padding:12px 24px;"><i class="ti ti-player-play" style="font-size:16px;vertical-align:-3px;margin-right:6px;" aria-hidden="true"></i>Resume</button><button class="btn" id="g-quit" style="background:rgba(255,255,255,.12);color:#fff;border:0.5px solid rgba(255,255,255,.3);font-size:15px;padding:12px 20px;">Quit to menu</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:380px;">
+            <button class="btn btn-primary" id="g-resume" style="font-size:15px;padding:12px 24px;"><i class="ti ti-player-play" style="font-size:16px;vertical-align:-3px;margin-right:6px;" aria-hidden="true"></i>Resume</button>
+            <button class="btn" id="g-pause-restart" style="background:rgba(255,255,255,.12);color:#fff;border:0.5px solid rgba(255,255,255,.3);font-size:15px;padding:12px 20px;"><i class="ti ti-refresh" style="font-size:15px;vertical-align:-2px;margin-right:6px;" aria-hidden="true"></i>Restart</button>
+            <button class="btn" id="g-end-now" style="background:rgba(255,255,255,.12);color:#fff;border:0.5px solid rgba(255,255,255,.3);font-size:15px;padding:12px 20px;" title="End run now and see your results"><i class="ti ti-flag" style="font-size:15px;vertical-align:-2px;margin-right:6px;" aria-hidden="true"></i>End run</button>
+            <button class="btn" id="g-quit" style="background:rgba(255,255,255,.12);color:#fff;border:0.5px solid rgba(255,255,255,.3);font-size:15px;padding:12px 20px;"><i class="ti ti-home" style="font-size:15px;vertical-align:-2px;margin-right:6px;" aria-hidden="true"></i>Quit to menu</button>
+          </div>
         </div>
 
         <div id="g-modal" class="modal-overlay hidden">
@@ -293,27 +304,4 @@
               </button>
             </div>
 
-            <div id="panel-mistakes" style="margin-bottom:18px;max-height:340px;overflow-y:auto;padding-right:4px;"></div>
-
-            <div id="panel-takeaways" class="hidden" style="text-align:left;background:var(--panel2);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:18px;">
-              <p style="font-size:13px;font-weight:600;color:var(--muted);margin:0 0 10px;letter-spacing:.05em;">REMEMBER THESE 6</p>
-              <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.8;">
-                <li><strong>Pressure = pause.</strong> Authority + urgency is the classic trap.</li>
-                <li><strong>Open it yourself.</strong> Never click login links - use bookmarks or apps.</li>
-                <li><strong>Hacked friends phish too.</strong> Verify weird requests by calling.</li>
-                <li><strong>Real services never ask for 2FA codes.</strong> Treat any such ask as hostile.</li>
-                <li><strong>Domains lie.</strong> rnicrosoft != microsoft. paypa1 != paypal.</li>
-                <li><strong>Free isn\u0027t free.</strong> Prizes, tiny fees and "you\u0027ve won" = bait.</li>
-              </ul>
-            </div>
-
-          </div>
-        </details>
-
-      </div>
-    </div>
-  </div>
-  
-  <script type="module" src="/src/main.ts"></script>
-</body>
-</html>
+       

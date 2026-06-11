@@ -1,3 +1,46 @@
+/**
+ * src/data.ts — the content layer (separation of concerns layer 1 of 3).
+ *
+ * This file is intentionally pure data with no behaviour. Keeping content
+ * separated from logic and rendering means:
+ *   1. A non-developer (Alisha — Research and Scenario Writing in our team)
+ *      can edit scenarios without touching game code.
+ *   2. The scenario set can be replaced wholesale for a different awareness
+ *      domain (e.g., financial scams, deepfakes) without rewriting main.ts.
+ *   3. Every scenario is auditable against the CyBOK Knowledge Area it claims
+ *      to teach — the `cybok` field on each Scenario is the audit hook.
+ *
+ * CyBOK GROUNDING STRATEGY
+ * ------------------------
+ * Each scenario carries a literal mapping to a CyBOK v1.1.0 Knowledge Area
+ * (Rashid et al., 2021). The mapping rules used were:
+ *
+ *   - Human Factors KA          — when the lever is psychological (urgency,
+ *                                 fear, authority cues, NEAT-compliant cues).
+ *   - Adversarial Behaviours KA — when the lever is technical or structural
+ *                                 (lookalike domains, pretexting, baiting,
+ *                                 BNPL/subscription pretexts).
+ *   - Privacy & Online Rights KA — when the attack exploits a trusted
+ *                                  channel (hacked friend's account, doc-share
+ *                                  pretexts, 2FA code requests).
+ *   - Malware & Attack Tech KA   — when the payload is a malicious file
+ *                                  (e.g. invoice.pdf.exe — double extension).
+ *
+ * SCENARIO SELECTION RATIONALE
+ * ----------------------------
+ * Target audience: UK university students aged 18-25. Scenarios deliberately
+ * use brands and pretexts students actually receive (SFE, Spotify Premium
+ * Student, Snapchat streaks, Discord Nitro, Tinder verification, Klarna
+ * instalments, "Hi mum new number"). Generic cyber-awareness training fails
+ * because the examples feel like other people's problems; surface-relevant
+ * scenarios force the player to recognise THEIR own threat landscape.
+ *
+ * The Scenario.flags array drives both the in-game red-flag chips AND the
+ * end-screen personalised diagnosis (logic.ts evaluateDiagnosis). The flag
+ * vocabulary is intentionally consistent across scenarios so the diagnosis
+ * can aggregate them — "urgency" in one scenario and "fear" in another roll
+ * up to the same CyBOK Human Factors KA lever.
+ */
 export interface Scenario {
   id: number;
   type: string;
