@@ -169,30 +169,9 @@ function startGame(li: number) {
   $("g-modal").classList.add("hidden");
   show("screen-game");
   buildStars();
-  showLaneReminder(() => spawn());
+  spawn();  // v2.4.2: no pre-game delay — scenario renders immediately so no race window
 }
 
-function showLaneReminder(then: () => void) {
-  // v2.4.1: lane reminder is now tap-to-skip so players never get stuck waiting.
-  // Auto-advance after 2s. Tapping the reminder OR the stage skips immediately.
-  const stage = $("stage");
-  const r = document.createElement('div');
-  r.className = 'lane-reminder';
-  r.innerHTML = '<span class="lr-tag lr-safe"><i class="ti ti-arrow-left-circle" aria-hidden="true"></i> SAFE LANE</span><span class="lr-vs">vs</span><span class="lr-tag lr-sus">SUSPICIOUS LANE <i class="ti ti-arrow-right-circle" aria-hidden="true"></i></span>';
-  stage.appendChild(r);
-  let done = false;
-  const finish = () => {
-    if (done) return;
-    done = true;
-    try { r.remove(); } catch(_) {}
-    if (then) then();
-  };
-  r.addEventListener('click', finish);
-  setTimeout(finish, 2000);
-  // Failsafe: if for any reason the timeout never fires (page hidden, throttled tab),
-  // a backup timer guarantees we never leave the message stuck on "Loading..."
-  setTimeout(finish, 4000);
-}
 
 function highlightMalicious(t: string) {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1028,7 +1007,7 @@ function startDaily() {
   $("g-modal").classList.add("hidden");
   show("screen-game");
   buildStars();
-  showLaneReminder(() => spawn());
+  spawn();  // v2.4.2: no pre-game delay — scenario renders immediately so no race window
 }
 function renderDailyButton() {
   const btn = $("daily-btn"), statusEl = $("daily-status");
