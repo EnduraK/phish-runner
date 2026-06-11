@@ -607,6 +607,30 @@ function switchTab(name: string) {
 buildLevels();
 show("screen-start"); // Initialize the first screen properly
 
+// v2.3.6: PWA install support
+let deferredInstall: any = null;
+window.addEventListener("beforeinstallprompt", (e: any) => {
+  e.preventDefault();
+  deferredInstall = e;
+  const btn = document.getElementById("install-btn");
+  if (btn) btn.style.display = "inline-flex";
+});
+document.getElementById("install-btn")?.addEventListener("click", async () => {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    await deferredInstall.userChoice;
+    deferredInstall = null;
+    const btn = document.getElementById("install-btn");
+    if (btn) btn.style.display = "none";
+  } else {
+    const modal = document.createElement("div");
+    modal.style.cssText = "position:fixed;inset:0;background:rgba(14,19,48,.94);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;";
+    modal.innerHTML = `<div style="background:#fff;border-radius:18px;padding:26px 24px;max-width:420px;text-align:left;"><h3 style="margin:0 0 12px;font-size:20px;">Install Phish Runner</h3><p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>iPhone (Safari):</strong> tap the <i class="ti ti-share" style="vertical-align:-3px;"></i> Share button, then <strong>Add to Home Screen</strong>.</p><p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Android (Chrome):</strong> tap the <i class="ti ti-dots-vertical" style="vertical-align:-3px;"></i> menu, then <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p><p style="margin:14px 0 0;font-size:13px;color:#666;">It will behave like a native app - fullscreen with its own icon.</p><button id="install-close" style="margin-top:18px;width:100%;padding:14px;background:linear-gradient(135deg,#3B82F6,#EC4899);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;">Got it</button></div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener("click", e => { if (e.target === modal || (e.target as HTMLElement).id === "install-close") modal.remove(); });
+  }
+});
+
 $("pr-back")?.addEventListener("click", () => { document.body.classList.remove("is-playing"); show("screen-start"); });
 $("pr-safe")?.addEventListener("click", () => practiceAnswer("Safe"));
 $("pr-sus")?.addEventListener("click", () => practiceAnswer("Suspicious"));
@@ -830,7 +854,10 @@ function renderAchievementsRow() {
   count.textContent = unlocked.size.toString();
   grid.innerHTML = ACHIEVEMENTS.map(a => {
     const got = unlocked.has(a.id);
-    return `<div title="${a.name} — ${a.desc}" style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:50%;background:${got ? "linear-gradient(135deg,#FAC775,#D85A30)" : "#E0DED5"};color:${got ? "#0E1330" : "#A0A0A0"};font-size:22px;${got ? "" : "opacity:.4;"}"><i class="ti ${a.icon}"></i></div>`;
+    return `<div title="${a.name} — ${a.desc}" style="display:flex;flex-direction:column;align-items:center;gap:4px;${got ? "" : "opacity:.45;"}">
+      <div style="width:46px;height:46px;border-radius:50%;background:${got ? "linear-gradient(135deg,#FAC775,#D85A30)" : "#E0DED5"};color:${got ? "#0E1330" : "#7a7a7a"};display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:${got ? "0 4px 12px rgba(216,90,48,.3)" : "none"};"><i class="ti ${a.icon}"></i></div>
+      <span style="font-size:10px;font-weight:700;color:${got ? "#0E1330" : "#9a9a9a"};letter-spacing:.02em;text-align:center;line-height:1.1;">${a.name.toUpperCase()}</span>
+    </div>`;
   }).join("");
 }
 function renderEndScreenAchievements(newly: Achievement[]) {
